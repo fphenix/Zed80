@@ -4,11 +4,11 @@ AmstradCPC (446/6128) and Z80 Emulator in Processing!
 
 Work very much in progress.
 
-Right now it's capable to run the loader screen of the game "Head Over Heels" (Ocean) read from a diskette image (.dsk file).
+Right now it's ("only" vs. "already") capable to run the loader screen of the game "Head Over Heels" (by Ocean), read from a diskette image (.dsk file). The picture is a beautiful 8-bit art by F. David Thorpe, which already makes this project worth it!
 
 It is however very (very) very slow!
 
-Not all Opcodes/Instructions are implemented yet.
+Not all Z80 Opcodes/Instructions are implemented yet.
 
 Not all System vector calls are implemented yet.
 
