@@ -6,7 +6,7 @@ Work very much in progress.
 
 Right now it's ("only" vs. "already") capable to run the loader screen of the game "Head Over Heels" (by Ocean), read from a diskette image (.dsk file). The picture is a beautiful 8-bit art by F. David Thorpe, which already makes this project worth it!
 
-It is however very (very) very slow!
+It could be even faster (although it used to be much much slower (loading screen 10sec now vs. 2h before!))!
 
 Not all Z80 Opcodes/Instructions are implemented yet.
 
@@ -20,4 +20,4 @@ Sound not yet supported.
 
 For educational purposes only.
 
-Note: I am nowhere near a Software/Java.Processing expert. I'd be glad to get any inputs, especially towards speeding up the execution.
+Note: I am nowhere near a Software/Java.Processing expert. I'd be glad to get any inputs.
