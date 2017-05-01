@@ -42,7 +42,7 @@ class D7 {
     this.FileInfo();
     this.BinFileHeaderInfo();
 
-    this.LogFileName = "D7LogFile.txt";
+    this.LogFileName = "data/D7LogFile.txt";
     this.logFile = createWriter(this.LogFileName);
   }
 

@@ -7,17 +7,20 @@ class GateArray {
   int border, borderAlt;
   int[] flash = new int[2];
   int videoAddr;
-  int rate;
+  PImage screen;
+  int pixIndex;
 
   int borderColor = color(0, 32, 0);
   int debugLine;
 
   float xscl, yscl;
-  int nbrow, nbrowfullscreen;
-  int nbcol, nbcolfullscreen;
-  float offcol, offrow;
+  final int nbrow = 200;
+  final int nbrowfullscreen = 272;
+  int nbcol;
+  int nbcolfullscreen;
+  int borderxsize, borderysize;
   float xpad, ypad;
-  float mainscl;
+  final float mainscl = 2.0;
   float xdebug;
   boolean showDebug = true;
   int regxpad = 55;
@@ -33,6 +36,35 @@ class GateArray {
   int[] regsS = new int[4];
   int[] regsP = new int[4];
   int[] flagsArr = new int[8];
+
+  /* == Constructors ========================================= */
+  GateArray () {
+    this.construct(true);
+  }
+
+  GateArray (boolean shwdbg) {
+    this.construct(shwdbg);
+  }
+
+  void construct (boolean shwdbg) {
+    this.showDebug = shwdbg;
+    this.debugLine = 0;
+
+    this.videoAddr = 0xC000;
+
+    screen = createImage(1, 1, RGB);
+    this.setMode(1);
+  }
+
+  void setRef(Z80 ref, RAM memref, Firmware romref) {
+    this.z80 = ref;
+    this.reg = this.z80.reg;
+    this.ram = memref;
+    this.rom = romref;
+    this.initArrays();
+  }
+
+  /* == End of Constructors ======================================= */
 
   void initArrays () {
     int i = 0;
@@ -62,53 +94,52 @@ class GateArray {
     flagsArr[i++] = this.reg.SFpos;
   }
 
-  /* == Constructors ========================================= */
-  GateArray () {
-    this.construct(true);
-  }
-
-  GateArray (boolean shwdbg) {
-    this.construct(shwdbg);
-  }
-
-  void construct (boolean shwdbg) {
-    this.showDebug = shwdbg;
-    this.debugLine = 0;
-
-    this.videoAddr = 0xC000;
-
-    this.nbrow = 200; // fixed
-    this.nbrowfullscreen = 272; // fixed
-    this.mainscl = 2.0; // fixed
-
-    this.mode = 1;
-    this.init();
-  }
-
-  void setRef(Z80 ref, RAM memref, Firmware romref) {
-    this.z80 = ref;
-    this.reg = this.z80.reg;
-    this.ram = memref;
-    this.rom = romref;
-    this.initArrays();
-  }
-
-  /* == End of Constructors ======================================= */
-
   void initColor () {
     for (int i = 0; i < this.pen.length; i++) {
       this.pen[i] = i+1;
       this.penAlt[i] = i+1;
     }
-    this.border = 0;
-    this.borderAlt = 0;
+    this.border = 1;
+    this.borderAlt = 1;
+  }
+
+  void calcScreenSize () {
+    this.yscl = this.mainscl;
+    switch (this.mode) {
+    case 0:
+      this.xscl = 2.0 * this.yscl;
+      this.nbcol = 160;
+      this.nbcolfullscreen = 192;
+      break;
+    case 1:
+      this.xscl = 1.0 * this.yscl;
+      this.nbcol = 320;
+      this.nbcolfullscreen = 384;
+      break;
+    case 3:
+      this.xscl = 2.0 * this.yscl;
+      this.nbcol = 160;
+      this.nbcolfullscreen = 192;
+      break;
+    default:
+      this.xscl = 0.5 * this.yscl;
+      this.nbcol = 640;
+      this.nbcolfullscreen = 768;
+      break;
+    }
+    this.xpad = 5; 
+    this.ypad = 5;
+    this.borderxsize = floor((this.nbcolfullscreen - this.nbcol) / 2.0);
+    this.borderysize = floor((this.nbrowfullscreen - this.nbrow) / 2.0);
   }
 
   void init () {
     int w;
-    int h = 570;
-    this.calcColSize();
-    this.yscl = this.mainscl;
+    int h = height;
+
+    this.initColor();
+    this.calcScreenSize();
+
     if (this.showDebug) {
       w = 1100;
       this.xdebug = 300;
@@ -117,12 +148,12 @@ class GateArray {
       this.xdebug = 0;
     }
     surface.setSize(w, h);
-    this.xpad = (w - this.mainscl*384 - this.xdebug)/3.0; 
-    this.ypad = (h - this.yscl*this.nbrowfullscreen) / 2.0;
-    this.offcol = this.xscl * (this.nbcolfullscreen - this.nbcol) / 2.0;
-    this.offrow = this.yscl * (this.nbrowfullscreen - this.nbrow) / 2.0;
-    this.initColor();
+    screen.resize(this.nbcolfullscreen, this.nbrowfullscreen);
+    screen.loadPixels();
+    println(this.mode, this.nbcolfullscreen, this.nbrowfullscreen, this.nbcol, this.nbrow, this.borderxsize, this.borderysize);
   }
+
+  //===================================================================================
 
   void setInstr (String si) {
     this.instr = si;
@@ -187,36 +218,24 @@ class GateArray {
     this.borderAlt = tmp;
   }
 
-  void calcColSize () {
-    switch (this.mode) {
-    case 0:
-      this.xscl = 2.0 * this.mainscl;
-      this.nbcol = 160;
-      this.nbcolfullscreen = 192;
-      break;
-    case 1:
-      this.xscl = 1.0 * this.mainscl;
-      this.nbcol = 320;
-      this.nbcolfullscreen = 384;
-      break;
-    case 3:
-      this.xscl = 2.0 * this.mainscl;
-      this.nbcol = 160;
-      this.nbcolfullscreen = 192;
-      break;
-    default:
-      this.xscl = 0.5 * this.mainscl;
-      this.nbcol = 640;
-      this.nbcolfullscreen = 768;
-      break;
-    }
+  // =================================================================================
+
+  int calcPixIndex (int x, int y) {
+    return (x + (y * this.nbcolfullscreen));
   }
 
   void display () {
-    showFullScreen ();
-    showScreen();
+    //this.showFullScreen ();
+    this.screen.loadPixels();
+    this.showScreen();
+    this.screen.updatePixels();
+    pushMatrix();
+    scale(this.xscl, this.yscl);
+    translate(this.xpad, this.ypad);
+    image(this.screen, 0, 0);
+    popMatrix();
     if (this.showDebug) {
-      showDebugScreen();
+      this.showDebugScreen();
     }
   }
 
@@ -338,7 +357,7 @@ class GateArray {
   void showDebugScreen () {
     //debug box
     pushMatrix();
-    translate(((2.0*this.xpad)+(this.nbcolfullscreen*this.xscl)), this.ypad);
+    translate(((2.0 * this.xpad) + (this.nbcolfullscreen * this.xscl)), this.ypad);
     stroke(255, 255, 0);
     fill(0, 0, 127);
     rect(0, 0, this.xdebug, this.nbrowfullscreen*this.yscl);
@@ -357,34 +376,51 @@ class GateArray {
   }
 
   void showFullScreen () {
+    //int pidx;
     //Full screen (incl. BORDER)
-    pushMatrix();
-    translate(this.xpad, this.ypad);
-    fill(this.getBorderColor());
-    stroke(255, 0, 0);
-    rect(0, 0, this.nbcolfullscreen*this.xscl, this.nbrowfullscreen*this.yscl);
-    popMatrix();
+    //pushMatrix();
+    //translate(this.xpad, this.ypad);
+    //fill(this.getBorderColor());
+    //stroke(255, 0, 0);
+    //rect(0, 0, this.nbcolfullscreen*this.xscl, this.nbrowfullscreen*this.yscl);
+    //popMatrix();
+  }
+
+  boolean isInRegularScreen (int x, int y) {
+    return ((x >= this.borderxsize) && (x < (this.borderxsize+this.nbcol)) && (y >= this.borderysize) && (y < (this.borderysize+this.nbrow)));
   }
 
   void showScreen() {
     int pixval;
+    int pIdx = 0;
     // Regular screen
-    pushMatrix();
-    translate(this.xpad+this.offcol, this.ypad+this.offrow);
-    //stroke(255);
-    noStroke();
-    rect(0, 0, this.nbcol*this.xscl, this.nbrow*this.yscl);
+    //pushMatrix();
+    //translate(this.xpad+this.offcol, this.ypad+this.offrow);
+    ////stroke(255);
+    //noStroke();
+    //rect(0, 0, this.nbcol*this.xscl, this.nbrow*this.yscl);
 
-    // pixels
-    noStroke();
-    for (int row = 0; row < this.nbrow; row++) {
-      for (int col = 0; col < this.nbcol; col++) {
-        pixval = this.getPixValue(col, row);
-        fill(this.getPenColor(pixval));
-        rect(col*this.xscl, row*this.yscl, this.xscl, this.yscl);
+    //// pixels
+    //noStroke();
+    //for (int row = 0; row < this.nbrow; row++) {
+    //  for (int col = 0; col < this.nbcol; col++) {
+    //    pixval = this.getPixValue(col, row);
+    //    fill(this.getPenColor(pixval));
+    //    rect(col*this.xscl, row*this.yscl, this.xscl, this.yscl);
+    //  }
+    //}
+    //popMatrix();
+    for (int y = 0; y < this.nbrowfullscreen; y++) {
+      for (int x = 0; x < this.nbcolfullscreen; x++) {
+        pIdx = this.calcPixIndex(x, y);
+        if (this.isInRegularScreen(x, y)) {         
+          pixval = this.getPixValue(x-this.borderxsize, y-this.borderysize);
+          screen.pixels[pIdx] = this.getPenColor(pixval);
+        } else {
+          screen.pixels[pIdx] = this.getBorderColor();
+        }
       }
     }
-    popMatrix();
   }
 
   // n is the Firmware color number

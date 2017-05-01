@@ -3,11 +3,11 @@
  #  Stack (16-Bit Load Group)
  #
  + PUSH qq
- # PUSH IX
- # PUSH IY
+ + PUSH IX
+ + PUSH IY
  + POP qq
- # POP IX
- # POP IY
+ + POP IX
+ + POP IY
  #
  ###############################################################*/
 // put a 16b word in the Stack (16b addr)

@@ -45,37 +45,18 @@ class InstrExTxSrch extends InstrStack {
   }
 
   // -----------------------------------------------------------------------------------------------------
-  void EXcontSPIXY (int ir) {
-    String iName;
-    if (ir == 0) {
-      iName = "IX";
-    } else {
-      iName = "IY";
-    }
+  void EXcontSPIXY (int ixy) {
+    String ixyName = this.reg.reg16Name[this.reg.IXpos + ixy];    
     int memPointer = this.reg.specialReg[this.reg.SPpos];
     int vall = this.ram.peek(memPointer + 0);
     int valh = this.ram.peek(memPointer + 1);
-    this.asmInstr = "EX (SP), " + iName;
+    this.asmInstr = "EX (SP), " + ixyName;
     this.setPMTRpCycles(2, 6, 23, 1, 0);
-    int r16 = this.getReg16Val(this.reg.IXpos + ir);
+    int r16 = this.getReg16Val(this.reg.IXpos + ixy);
     this.ram.poke(memPointer + 0, this.rshiftMask(r16, 0, 0xFF)); // LSB
     this.ram.poke(memPointer + 1, this.rshiftMask(r16, 8, 0xFF)); // MSB
-    this.setReg16Val(this.reg.IXpos + ir, (valh << 8) + vall);
-    this.comment = "Exchange the values in (SP) and " + iName + " registers";
-  }
-
-  // -----------------------------------------------------------------------------------------------------
-  void EXcontSPIY () {
-    int memPointer = this.reg.specialReg[this.reg.SPpos];
-    int vall = this.ram.peek(memPointer + this.reg.LSB);
-    int valh = this.ram.peek(memPointer + this.reg.MSB);
-    this.asmInstr = "EX (SP), HL";
-    this.setPMTRpCycles(2, 6, 23, 1, 0);
-    this.ram.poke(memPointer + this.reg.LSB, this.getRegVal(this.reg.Lpos));
-    this.ram.poke(memPointer + this.reg.MSB, this.getRegVal(this.reg.Hpos));
-    this.setRegVal(this.reg.Hpos, valh);
-    this.setRegVal(this.reg.Lpos, vall);
-    this.comment = "Exchange the values in (SP) and HL registers";
+    this.setReg16Val(this.reg.IXpos + ixy, (valh << 8) + vall);
+    this.comment = "Exchange the values in (SP) and " + ixyName + " registers";
   }
 
   // -----------------------------------------------------------------------------------------------------

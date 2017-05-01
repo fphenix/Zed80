@@ -27,7 +27,7 @@ class Opcodes {
     this.opcode  = opc[0];
     this.opcode2 = opc[1];
     this.pc = this.reg.specialReg[this.reg.PCpos];
-    int r, s, d, c, p, q, ixy, en, mode;
+    int r, s, d, b, c, p, q, ixy, en, mode;
 
     // -- NOP -------------------------------------------------------------------------------------
     // -- 0000_0000 : 0x00
@@ -329,6 +329,37 @@ class Opcodes {
     } else if ((this.opcode & 0xC7) == 0xC0) {
       c = ((this.opcode & 0x38) >> 3); 
       this.instr.RETccc(c);
+
+      // ***************************************************************************************
+      // **    Prefix 0xCB
+      // ***************************************************************************************
+    } else if (this.opcode == 0xCB) {
+
+      // -- BIT b, r -----------------------------------------------------------------------------------
+      // -- 1100_1011 01bb_brrr : 0xCB40 to 0xCB7F
+      if  ((this.opcode2 & 0xC0) == 0x40) {
+        b = (this.opcode2 & 0x38) >> 3;
+        r = (this.opcode2 & 0x07) >> 0;
+        this.instr.BITbr(b, r);
+
+        // -- SET b, r -----------------------------------------------------------------------------------
+        // -- 1100_1011 11bb_brrr : 0xCBC0 to 0xCBFF
+      } else if  ((this.opcode2 & 0xC0) == 0xC0) {
+        b = (this.opcode2 & 0x38) >> 3;
+        r = (this.opcode2 & 0x07) >> 0;
+        this.instr.SETbr(b, r);
+
+        // -- RES b, r -----------------------------------------------------------------------------------
+        // -- 1100_1011 10bb_brrr : 0xCB80 to 0xCBBF
+      } else if  ((this.opcode2 & 0xC0) == 0x80) {
+        b = (this.opcode2 & 0x38) >> 3;
+        r = (this.opcode2 & 0x07) >> 0;
+        this.instr.RESbr(b, r);
+
+        // --NOP by default ---------------------------------------------------------------------
+      } else {
+        this.instr.NOTIMP(2);
+      }
 
       // ***************************************************************************************
       // **    Prefix 0xED

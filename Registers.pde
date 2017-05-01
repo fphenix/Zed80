@@ -160,7 +160,7 @@ class Registers {
     this.breakMode = true;
   }
 
-  void clearBKP () {
+  void setBKPOff () {
     this.breakMode = false;
   }
 

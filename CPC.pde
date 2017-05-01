@@ -7,14 +7,12 @@ class CPC {
   PSG psg;
 
   int iter = 0;
-  int iterMax = 100000;
+  int iterMax = 200000;
   int speed;
   boolean stepForward;
   boolean freerun;
-  int rate;
 
   CPC () {
-    this.rate = 0;
     this.stepForward = false;
     this.freerun = false;
 
@@ -65,8 +63,8 @@ class CPC {
     this.z80.reg.setBKPOn();
   }
 
-  void clearBKP () {
-    this.z80.reg.setBKPOn();
+  void setBKPOff () {
+    this.z80.reg.setBKPOff();
   }
 
   void setSP (int sp) {
@@ -89,11 +87,11 @@ class CPC {
 
   void step() {
     this.stepForward = true;
-    this.z80.reg.clearBKP();
+    this.z80.reg.setBKPOff();
     this.run();
   }
 
-  void hideDebugWin () {
+  void hideDebugWindow () {
     this.ga.hideDebugWindow();
   }
 
@@ -102,15 +100,15 @@ class CPC {
       if (this.iter == this.iterMax) {
         println("Reached max iter");
         this.halt();
+        noLoop();
       }
 //      loadPixels();
-//      if ((this.rate % 30) == 0) {
+      if ((this.iter % 20) == 0) {
         this.ga.display();
 //        loadPixels();
 //      } else {
 //        updatePixels();
-//      }
-//      this.rate++;
+      }
       if ((this.z80.reg.breakMode) && (this.z80.reg.breakPoint == this.z80.pc)) {
         println("Break Point at 0x" + hex(this.z80.pc, 4));
         this.halt();
