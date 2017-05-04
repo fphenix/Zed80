@@ -1,0 +1,237 @@
+#  opcode    instr    M-cycles Tcycles Rcycles   byte-param     operation-to-evaluate    comment
+
+
+###############################################################
+#
+# 8-Bit Arithmetic and Logical Group
+#
+###############################################################
+
+#--------------------------------------------------------------
+# ADD A,(IX+d)
+# 11011101 10000110 dddddddd ; d is a 2's complement
+append CmdLst {
+   0xDD86 {ADD A,(IX+$DATA(0))} 5 19 2 1 {set Reg(A) [Reg8_plus $Reg(A)
+   [Mem8 [Reg16_plus $Reg(IX) [Comp2 $DATA(0)]]]] ; 
+   SetFlag [Bit A 7] [isZero A] [Bit A 5] [Bit A 4] [Bit A 3] $TEMP(OV) 0 $TEMP(C)}
+   {A = A + (IX+[Comp2 $DATA(0)]) = A + ([Reg16_plus $Reg(IX) [Comp2 $DATA(0)]]) = A + [Mem8 [Reg16_plus $Reg(IX) [Comp2 $DATA(0)]]] = $Reg(A)}
+}
+
+#--------------------------------------------------------------
+# ADD A,(IY+d)
+# 11111101 10000110 dddddddd
+append CmdLst {
+   0xFD86 {ADD A,(IY+$DATA(0))} 5 19 2 1 {set Reg(A) [Reg8_plus $Reg(A) [Mem8 [Reg16_plus $Reg(IY) [Comp2 $DATA(0)]]]] ; SetFlag [Bit A 7] [isZero A] [Bit A 5] [Bit A 4] [Bit A 3] $TEMP(OV) 0 $TEMP(C)} {A = A + (IY+[Comp2 $DATA(0)]) = A + ([Reg16_plus $Reg(IY) [Comp2 $DATA(0)]]) = A + [Mem8 [Reg16_plus $Reg(IY) [Comp2 $DATA(0)]]] = $Reg(A)}
+}
+
+
+#--------------------------------------------------------------
+# ADC A,(IX+d)
+# 11011101 10001110 dddddddd
+append CmdLst {
+   0xDD8E {ADC A,(IX+$DATA(0))} 5 19 2 1 {set Reg(A) [Reg8_plus $Reg(A) [Mem8 [Reg16_plus $Reg(IX) [Comp2 $DATA(0)]]] $Flag(C)] ; SetFlag [Bit A 7] [isZero A] [Bit A 5] [Bit A 4] [Bit A 3] $TEMP(OV) 0 $TEMP(C)} {A=A+(IX+[Comp2 $DATA(0)])+Carry= A+([Reg16_plus $Reg(IX) [Comp2 $DATA(0)]])+$Flag(C) = A+[Mem8 [Reg16_plus $Reg(IX) [Comp2 $DATA(0)]]]+$Flag(C) = $Reg(A)}
+}
+
+#--------------------------------------------------------------
+# ADC A,(IY+d)
+# 11111101 10001110 dddddddd
+append CmdLst {
+   0xFD8E {ADC A,(IY+$DATA(0))} 5 19 2 1 {set Reg(A) [Reg8_plus $Reg(A) [Mem8 [Reg16_plus $Reg(IY) [Comp2 $DATA(0)]]] $Flag(C)] ; SetFlag [Bit A 7] [isZero A] [Bit A 5] [Bit A 4] [Bit A 3] $TEMP(OV) 0 $TEMP(C)} {A=A+(IY+[Comp2 $DATA(0)])+Carry= A+([Reg16_plus $Reg(IY) [Comp2 $DATA(0)]])+$Flag(C) = A+[Mem8 [Reg16_plus $Reg(IY) [Comp2 $DATA(0)]]]+$Flag(C) = $Reg(A)}
+}
+
+
+#--------------------------------------------------------------
+# SUB (IX+d)
+# 11011101 10010110 dddddddd
+append CmdLst {
+   0xDD96 {SUB (IX+$DATA(0))} 5 19 2 1 {set Reg(A) [Reg8_minus $Reg(A) [Mem8 [Reg16_plus $Reg(IX) [Comp2 $DATA(0)]]]] ; SetFlag [Bit A 7] [isZero A] [Bit A 5] [Bit A 4] [Bit A 3] $TEMP(OV) 1 $TEMP(C)} {A=A-(IX+[Comp2 $DATA(0)]) = A-([Reg16_plus $Reg(IX) [Comp2 $DATA(0)]]) = A-[Mem8 [Reg16_plus $Reg(IX) [Comp2 $DATA(0)]]] = $Reg(A)}
+}
+
+#--------------------------------------------------------------
+# SUB (IY+d)
+# 11011101 10010110 dddddddd
+append CmdLst {
+   0xFD96 {SUB (IY+$DATA(0))} 5 19 2 1 {set Reg(A) [Reg8_minus $Reg(A) [Mem8 [Reg16_plus $Reg(IY) [Comp2 $DATA(0)]]]] ; SetFlag [Bit A 7] [isZero A] [Bit A 5] [Bit A 4] [Bit A 3] $TEMP(OV) 1 $TEMP(C)} {A=A-(IY+[Comp2 $DATA(0)]) = A-([Reg16_plus $Reg(IY) [Comp2 $DATA(0)]]) = A-[Mem8 [Reg16_plus $Reg(IY) [Comp2 $DATA(0)]]] = $Reg(A)}
+}
+
+#--------------------------------------------------------------
+# SBC A,(IX+d)
+# 11011101 10011110 dddddddd
+append CmdLst {
+   0xDD9E {SBC A,(IX+$DATA(0))} 5 19 2 1 {set Reg(A) [Reg8_minus $Reg(A) [Mem8 [Reg16_plus $Reg(IX) [Comp2 $DATA(0)]]] $Flag(C)] ; SetFlag [Bit A 7] [isZero A] [Bit A 5] [Bit A 4] [Bit A 3] $TEMP(OV) 1 $TEMP(C)} {A=A-(IX+[Comp2 $DATA(0)])-Carry = A-([Reg16_plus $Reg(IX) [Comp2 $DATA(0)]])-carry = A-[Mem8 [Reg16_plus $Reg(IX) [Comp2 $DATA(0)]]]-carry = $Reg(A)}
+}
+
+#--------------------------------------------------------------
+# SBC A,(IY+d)
+# 11111101 10011110 dddddddd
+append CmdLst {
+   0xFD9E {SBC A,(IY+$DATA(0))} 5 19 2 1 {set Reg(A) [Reg8_minus $Reg(A) [Mem8 [Reg16_plus $Reg(IY) [Comp2 $DATA(0)]]] $Flag(C)] ; SetFlag [Bit A 7] [isZero A] [Bit A 5] [Bit A 4] [Bit A 3] $TEMP(OV) 1 $TEMP(C)} {A=A-(IY+[Comp2 $DATA(0)])-Carry = A-([Reg16_plus $Reg(IY) [Comp2 $DATA(0)]])-carry = A-[Mem8 [Reg16_plus $Reg(IY) [Comp2 $DATA(0)]]]-carry = $Reg(A)}
+}
+
+#--------------------------------------------------------------
+# AND (IX+d) ; d is a 2's complement
+# 11011101 10100110 dddddddd
+append CmdLst {
+   0xDDA6 {AND (IX+$DATA(0))} 5 19 2 1 {set Reg(A) [tohexByte [expr $Reg(A) & [Mem8 [Reg16_plus $Reg(IX) [Comp2 $DATA(0)]]]]] ; SetFlag [Bit A 7] [isZero A] [Bit A 5] 1 [Bit A 3] [inv [Bit A 0]] 0 0} {A=A AND (IX+[Comp2 $DATA(0)]) = A AND ([Reg16_plus $Reg(IX) [Comp2 $DATA(0)]]) = A AND [Mem8 [Reg16_plus $Reg(IX) [Comp2 $DATA(0)]]] = $Reg(A)}
+}
+
+#--------------------------------------------------------------
+# AND (IY+d)
+# 11111101 10100110 dddddddd
+append CmdLst {
+   0xFDA6 {AND (IY+$DATA(0))} 5 19 2 1 {set Reg(A) [tohexByte [expr $Reg(A) & [Mem8 [Reg16_plus $Reg(IY) [Comp2 $DATA(0)]]]]] ; SetFlag [Bit A 7] [isZero A] [Bit A 5] 1 [Bit A 3] [inv [Bit A 0]] 0 0} {A=A AND (IY+[Comp2 $DATA(0)]) = A AND ([Reg16_plus $Reg(IY) [Comp2 $DATA(0)]]) = A AND [Mem8 [Reg16_plus $Reg(IY) [Comp2 $DATA(0)]]] = $Reg(A)}
+}
+
+#--------------------------------------------------------------
+# OR (IX+d) ; d is a 2's complement
+# 11011101 10110110 dddddddd
+append CmdLst {
+   0xDDB6 {OR (IX+$DATA(0))} 5 19 2 1 {set Reg(A) [tohexByte [expr $Reg(A) | [Mem8 [Reg16_plus $Reg(IX) [Comp2 $DATA(0)]]]]] ; SetFlag [Bit A 7] [isZero A] [Bit A 5] 0 [Bit A 3] [inv [Bit A 0]] 0 0} {A=A OR (IX+[Comp2 $DATA(0)]) = A OR ([Reg16_plus $Reg(IX) [Comp2 $DATA(0)]]) = A OR [Mem8 [Reg16_plus $Reg(IX) [Comp2 $DATA(0)]]] = $Reg(A)}
+}
+
+#--------------------------------------------------------------
+# OR (IY+d)
+# 11111101 10110110 dddddddd
+append CmdLst {
+   0xFDB6 {OR (IY+$DATA(0))} 5 19 2 1 {set Reg(A) [tohexByte [expr $Reg(A) | [Mem8 [Reg16_plus $Reg(IY) [Comp2 $DATA(0)]]]]] ; SetFlag [Bit A 7] [isZero A] [Bit A 5] 0 [Bit A 3] [inv [Bit A 0]] 0 0} {A=A OR (IY+[Comp2 $DATA(0)]) = A OR ([Reg16_plus $Reg(IY) [Comp2 $DATA(0)]]) = A OR [Mem8 [Reg16_plus $Reg(IY) [Comp2 $DATA(0)]]] = $Reg(A)}
+}
+
+#--------------------------------------------------------------
+# XOR (IX+d)
+# 11011101 10101110 dddddddd
+append CmdLst {
+   0xDDAE {XOR (IX+$DATA(0))} 5 19 2 1 {set Reg(A) [tohexByte [expr $Reg(A) ^ [Mem8 [Reg16_plus $Reg(IX) [Comp2 $DATA(0)]]]]] ; SetFlag [Bit A 7] [isZero A] [Bit A 5] 0 [Bit A 3] [inv [Bit A 0]] 0 0} {A=A XOR (IX+[Comp2 $DATA(0)]) = A XOR ([Reg16_plus $Reg(IX) [Comp2 $DATA(0)]]) = A XOR [Mem8 [Reg16_plus $Reg(IX) [Comp2 $DATA(0)]]] = $Reg(A)}
+}
+
+#--------------------------------------------------------------
+# XOR (IY+d)
+# 11111101 10101110 dddddddd
+append CmdLst {
+   0xFDAE {XOR (IY+$DATA(0))} 5 19 2 1 {set Reg(A) [tohexByte [expr $Reg(A) ^ [Mem8 [Reg16_plus $Reg(IY) [Comp2 $DATA(0)]]]]] ; SetFlag [Bit A 7] [isZero A] [Bit A 5] 0 [Bit A 3] [inv [Bit A 0]] 0 0} {A=A XOR (IY+[Comp2 $DATA(0)]) = A XOR ([Reg16_plus $Reg(IY) [Comp2 $DATA(0)]]) = A XOR [Mem8 [Reg16_plus $Reg(IY) [Comp2 $DATA(0)]]] = $Reg(A)}
+}
+
+
+#--------------------------------------------------------------
+# CP (IX+d)
+# 11011101 10111110 dddddddd
+append CmdLst {
+   0xDDBE {CP (IX+$DATA(0))} 5 19 2 1 {set TEMP(8L) [Reg8_minus $Reg(A) [Mem8 [Reg16_plus $Reg(IX) [Comp2 $DATA(0)]]]] ; SetFlag [Bit $TEMP(8L) 7] [isZero $TEMP(8L)] [Bit $Reg($r) 5] [Bit $TEMP(8L) 4] [Bit $Reg($r) 3] $TEMP(OV) 1 $TEMP(C)} {Compare A and (IX+[Comp2 $DATA(0)]) ; A = $Reg(A) ; (IX+[Comp2 $DATA(0)])=([Reg16_plus $Reg(IX) [Comp2 $DATA(0)]])=[Mem8 [Reg16_plus $Reg(IX) [Comp2 $DATA(0)]]]}
+}
+
+#--------------------------------------------------------------
+# CP (IY+d)
+# 11111101 10111110 dddddddd
+append CmdLst {
+   0xFDBE {CP (IY+$DATA(0))} 5 19 2 1 {set TEMP(8L) [Reg8_minus $Reg(A) [Mem8 [Reg16_plus $Reg(IY) [Comp2 $DATA(0)]]]] ; SetFlag [Bit $TEMP(8L) 7] [isZero $TEMP(8L)] [Bit $Reg($r) 5] [Bit $TEMP(8L) 4] [Bit $Reg($r) 3] $TEMP(OV) 1 $TEMP(C)} {Compare A and (IY+[Comp2 $DATA(0)]) ; A = $Reg(A) ; (IY+[Comp2 $DATA(0)])=([Reg16_plus $Reg(IY) [Comp2 $DATA(0)]])=[Mem8 [Reg16_plus $Reg(IY) [Comp2 $DATA(0)]]]}
+}
+
+#--------------------------------------------------------------
+# INC (IX+d)
+# 11011101 00110100 dddddddd
+append CmdLst {
+   0xDD34 {INC (IX+$DATA(0))} 6 26 2 1 {set TEMP(16) [Reg16_plus $Reg(IX) [Comp2 $DATA(0)]] ; set TEMP(8L) [Reg8_plus [Mem8 $TEMP(16)]] ; set Memory($TEMP(16)) $TEMP(8L) ; SetFlag [Bit $TEMP(8L) 7] [isZero $TEMP(8L)] [Bit $TEMP(8L) 5] [Bit $TEMP(8L) 4] [Bit $TEMP(8L) 3] $TEMP(OV) 0 x} {(IX+[Comp2 $DATA(0)])+1 = ([Reg16_plus $Reg(IX) [Comp2 $DATA(0)]])+1 = [Mem8 [Reg16_plus $Reg(IX) [Comp2 $DATA(0)]]]+1 = $TEMP(8L)}
+}
+
+#--------------------------------------------------------------
+# INC (IY+d)
+# 11111101 00110100 dddddddd
+append CmdLst {
+   0xFD34 {INC (IY+$DATA(0))} 6 26 2 1 {set TEMP(16) [Reg16_plus $Reg(IY) [Comp2 $DATA(0)]] ; set TEMP(8L) [Reg8_plus [Mem8 $TEMP(16)]] ; set Memory($TEMP(16)) $TEMP(8L) ; SetFlag [Bit $TEMP(8L) 7] [isZero $TEMP(8L)] [Bit $TEMP(8L) 5] [Bit $TEMP(8L) 4] [Bit $TEMP(8L) 3] $TEMP(OV) 0 x} {(IY+[Comp2 $DATA(0)])+1 = ([Reg16_plus $Reg(IY) [Comp2 $DATA(0)]])+1 = [Mem8 [Reg16_plus $Reg(IY) [Comp2 $DATA(0)]]]+1 = $TEMP(8L)}
+}
+
+#--------------------------------------------------------------
+# DEC (IX+d)
+# 11011101 00110101 dddddddd
+append CmdLst {
+   0xDD35 {DEC (IX+$DATA(0))} 6 26 2 1 {set TEMP(16) [Reg16_plus $Reg(IX) [Comp2 $DATA(0)]] ; set TEMP(8L) [Reg8_minus [Mem8 $TEMP(16)]] ; set Memory($TEMP(16)) $TEMP(8L) ; SetFlag [Bit $TEMP(8L) 7] [isZero $TEMP(8L)] [Bit $TEMP(8L) 5] [Bit $TEMP(8L) 4] [Bit $TEMP(8L) 3] $TEMP(OV) 1 x} {(IX+[Comp2 $DATA(0)])-1 = ([Reg16_plus $Reg(IX) [Comp2 $DATA(0)]])-1 = [Mem8 [Reg16_plus $Reg(IX) [Comp2 $DATA(0)]]]-1 = $TEMP(8L)}
+}
+
+#--------------------------------------------------------------
+# DEC (IY+d)
+# 11111101 00110101 dddddddd
+append CmdLst {
+   0xFD35 {DEC (IY+$DATA(0))} 6 26 2 1 {set TEMP(16) [Reg16_plus $Reg(IY) [Comp2 $DATA(0)]] ; set TEMP(8L) [Reg8_minus [Mem8 $TEMP(16)]] ; set Memory($TEMP(16)) $TEMP(8L) ; SetFlag [Bit $TEMP(8L) 7] [isZero $TEMP(8L)] [Bit $TEMP(8L) 5] [Bit $TEMP(8L) 4] [Bit $TEMP(8L) 3] $TEMP(OV) 1 x} {(IY+[Comp2 $DATA(0)])+1 = ([Reg16_plus $Reg(IY) [Comp2 $DATA(0)]])-1 = [Mem8 [Reg16_plus $Reg(IY) [Comp2 $DATA(0)]]]-1 = $TEMP(8L)}
+}
+
+
+
+###############################################################
+#
+#  Exchange, Block Transfert, Block Search Group
+#
+###############################################################
+
+
+
+
+###############################################################
+#
+# Rotate and Shift Group
+#
+###############################################################
+
+#--------------------------------------------------------------
+# RLC (IX+d)
+#
+
+#--------------------------------------------------------------
+# RLC (IY+d)
+#
+
+#--------------------------------------------------------------
+# RLC (IX+d),r
+#
+
+#--------------------------------------------------------------
+# RLC (IY+d),r
+#
+
+
+
+###############################################################
+#
+#  Stack (16-Bit Load Group)
+#
+###############################################################
+
+
+###############################################################
+#
+# 16-Bit Artithmetic Group
+#
+###############################################################
+
+#--------------------------------------------------------------
+# ADD IX,pp
+# 11011101 00pp1001
+foreach p [array names RegCode_pp] {
+  set byte [bin2hex 11011101][string range [bin2hex 00[set RegCode_pp($p)]1001] 2 end]
+  foreach {d1 d2} [split $p {}] {break}
+  append CmdLst " $byte"
+  append CmdLst " {ADD IX,$p}"
+  append CmdLst " 4 15 2 0"
+  if {[string equal $p "SP"]} {
+    append CmdLst " {set Reg(IX) \[Reg16_plus \$Reg(IX) \$Reg($p)\] ; SetFlag x x \[Bit \$TEMP(8A) 5\] \[Bit \$TEMP(8A) 4\] \[Bit \$TEMP(8A) 3\] x 0 \$TEMP(C)}"
+  } else {
+    append CmdLst " {set Reg(IX) \[Reg16_plus \$Reg(IX) \[Reg16 $d1 $d2\]\] ; SetFlag x x \[Bit \$TEMP(8A) 5\] \[Bit \$TEMP(8A) 4\] \[Bit \$TEMP(8A) 3\] x 0 \$TEMP(C)}"
+  }
+  append CmdLst " {IX = IX+$p = \$Reg(IX)}\n"
+}
+
+#--------------------------------------------------------------
+# ADD IY,qq
+# 11111101 00pp1001
+foreach q [array names RegCode_qq] {
+  set byte [bin2hex 11111101][string range [bin2hex 00[set RegCode_qq($q)]1001] 2 end]
+  foreach {d1 d2} [split $q {}] {break}
+  append CmdLst " $byte"
+  append CmdLst " {ADD IY,$q}"
+  append CmdLst " 4 15 2 0"
+  if {[string equal $q "SP"]} {
+    append CmdLst " {set Reg(IY) \[Reg16_plus \$Reg(IY) \$Reg($q)\] ; SetFlag x x \[Bit \$TEMP(8A) 5\] \[Bit \$TEMP(8A) 4\] \[Bit \$TEMP(8A) 3\] x 0 \$TEMP(C)}"
+  } else {
+    append CmdLst " {set Reg(IY) \[Reg16_plus \$Reg(IY) \[Reg16 $d1 $d2\]\] ; SetFlag x x \[Bit \$TEMP(8A) 5\] \[Bit \$TEMP(8A) 4\] \[Bit \$TEMP(8A) 3\] x 0 \$TEMP(C)}"
+  }
+  append CmdLst " {IY = IY+$q = \$Reg(IY)}\n"
+}
+

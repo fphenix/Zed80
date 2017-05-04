@@ -1,0 +1,61 @@
+#Gate Array: I/O Port Address 0x7FXX, Write Only
+#Data:
+00x00000 {Select Pen 0}
+00x00001 {Select Pen 1}
+00x00010 {Select Pen 2}
+00x00011 {Select Pen 3}
+00x00100 {Select Pen 4}
+00x00101 {Select Pen 5}
+00x00110 {Select Pen 6}
+00x00111 {Select Pen 7}
+00x01000 {Select Pen 8}
+00x01001 {Select Pen 9}
+00x01010 {Select Pen A}
+00x01011 {Select Pen B}
+00x01100 {Select Pen C}
+00x01101 {Select Pen D}
+00x01110 {Select Pen E}
+00x01111 {Select Pen F}
+00x1xxxx {Select Border}
+01x00000 {Select Hardware Color 00 White for selected pen or border}
+01x00001 {Select Hardware Color 01 unofficialWhite for selected pen or border}
+01x00010 {Select Hardware Color 02 SeaGreen for selected pen or border}
+01x00011 {Select Hardware Color 03 PastelYellow for selected pen or border}
+01x00100 {Select Hardware Color 04 Blue for selected pen or border}
+01x00101 {Select Hardware Color 05 Purple for selected pen or border}
+01x00110 {Select Hardware Color 06 Cyan for selected pen or border}
+01x00111 {Select Hardware Color 07 Pink for selected pen or border}
+01x01000 {Select Hardware Color 08 unofficialPurple for selected pen or border}
+01x01001 {Select Hardware Color 09 unofficialPastelYellow for selected pen or border}
+01x01010 {Select Hardware Color 10 BrightYellow for selected pen or border}
+01x01011 {Select Hardware Color 11 BrightWhite for selected pen or border}
+01x01100 {Select Hardware Color 12 BrightRed for selected pen or border}
+01x01101 {Select Hardware Color 13 BrightMagenta for selected pen or border}
+01x01110 {Select Hardware Color 14 Orange for selected pen or border}
+01x01111 {Select Hardware Color 15 PastelMagenta for selected pen or border}
+01x10000 {Select Hardware Color 16 unofficialBlue for selected pen or border}
+01x10001 {Select Hardware Color 17 unofficialSeaGreen for selected pen or border}
+01x10010 {Select Hardware Color 18 BrightGreen for selected pen or border}
+01x10011 {Select Hardware Color 19 BrightCyan for selected pen or border}
+01x10100 {Select Hardware Color 20 Black for selected pen or border}
+01x10101 {Select Hardware Color 21 BrightBlue for selected pen or border}
+01x10110 {Select Hardware Color 22 Green for selected pen or border}
+01x10111 {Select Hardware Color 23 SkyBlue for selected pen or border}
+01x11000 {Select Hardware Color 24 Magenta for selected pen or border}
+01x11001 {Select Hardware Color 25 PastelGreen for selected pen or border}
+01x11010 {Select Hardware Color 26 Lime for selected pen or border}
+01x11011 {Select Hardware Color 27 PastelCyan for selected pen or border}
+01x11100 {Select Hardware Color 28 Red for selected pen or border}
+01x11101 {Select Hardware Color 29 Mauve for selected pen or border}
+01x11110 {Select Hardware Color 30 Yellow for selected pen or border}
+01x11111 {Select Hardware Color 31 PastelBlue for selected pen or border}
+11xxxx00 {Select Mode 0, 160x200 resolution, 16 colors}
+11xxxx01 {Select Mode 1, 320x200 resolution, 4 colors}
+11xxxx10 {Select Mode 2, 640x200 resolution, 2 colors}
+11xxxx11 {Select Mode 3, unofficial 160x200 resolution, 4 colors}
+11xxx0xx {Ram Memory Management: Lower Memory adresses 0x0000-0x3FFF: Write&Read in RAM}
+11xxx1xx {Ram Memory Management: Lower Memory adresses 0x0000-0x3FFF: Write in RAM & Read from ROM (Operating System)}
+11xx0xxx {Ram Memory Management: Upper Memory adresses 0xC000-0xFFFF: Write&Read in RAM}
+11xx1xxx {Ram Memory Management: Upper Memory adresses 0xC000-0xFFFF: Write in RAM & Read from ROM (BASIC or Expansion ROMs)}
+11x1xxxx {Control Interrupt Generation}
+

@@ -1,0 +1,18 @@
+# keyboard matrix
+# line 0 -> 9
+# bit7 (top) -> 0 (bottom)
+
+{num.}        {num0}       {Ctrl}   {> ,}   {< .} Space {v V}           {x X} {z Z}       {Del}
+{Enter}       {num2}       {` \\}   {? /}   {m M} {n N} {b B Joy1Fire3} {c C} {Caps_Lock} {Joy0_Fire3}
+{num3}        {num1}       {Shift}  {* :}   {k K} {j J} {f F Joy1Fire1} {d D} {a A}       {Joy0_Fire1}
+{num6}        {num5}       {num4}   {+ ;}   {l L} {h H} {g G Joy1Fire2} {s S} {Tab}       {Joy0_Fire2}
+{num9}        {num8}       {\} ]}   {p P}   {i I} {y Y} {t T Joy1Right} {w W} {q Q}       {Joy0_Right}
+{CursorDown}  {num7}       {Return} {| @}   {o O} {u U} {r R Joy1Left}  {e E} {Esc}       {Joy0_Left}
+{CursorRight} {Copy}       {\{ [}   {= -}   {) 9} {' 7} {% 5 Joy1Down}  {# 3} {" 2}       {Joy0_Down}
+{CursorUp}    {CursorLeft} {Clr}    {gbp ^} {_ 0} {( 8} {& 6 Joy1Up}    {$ 4} {! 1}       {Joy0_Up}
+
+# else 0xFF (line 11-14)
+
+# Matrix connected to PSG IO PortA and PortC using register 14
+# bits [3:0] of PPI PortC are used to define the matrix line to read
+# the corresponding byte will be present on PortA

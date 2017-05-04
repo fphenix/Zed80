@@ -1,0 +1,71 @@
+# AY-3-8912 Programmable Sound Generator (PSG)
+# operating at 1MHz
+# accessed via the PPI (programmable peripheral interface) 8255
+#
+# Sound Generator and Keyboard&Joystick matrix Scanner
+# To select the PPI, the address is xxxx0xmm-xxxxxxxx
+# with x, don't care, but usually put a 1 and
+# mm = 00 for portA, 01 for PortB, 10 for PortC, 11 for ControlRegister
+# (see io.txt)
+# 
+# The data bus of the PSG is connected to PPI PortA
+# The PSG functions Bus Cntrol BC1, BC2 and Bus Direction BDIR are
+# controlled via the bits 7 (BDIR) and 6 (BC1) of PPI PortC
+#
+#  xxxx0x00-dddddddd   {PPI PortA : PSG Data}
+#  xxxx0x10-00xxxxxx   {PPI PortC : PSG Inactive ; Must be used between functions on CPC+}
+#  xxxx0x10-01xxxxxx   {PPI PortC : PSG Read from selected register ; data read will be available on PPI PortA which must be operating as input}
+#  xxxx0x10-10xxxxxx   {PPI PortC : PSG Write to selected register ; data to write is available on PPI PortA which must be operating as output}
+#  xxxx0x10-11xxxxxx   {PPI PortC : PSG Select a register ; register number available on PPI PortA which must be operating as output}
+
+# 15 internal registers; 14 for Sound, 1 for keyboard
+
+# Freq = 125000 / 12b_tone_periode (e.g. 440Hz -> R1 = 0x01, R0 = 0x1C) 
+   0        {Channel A tone period (8b fine tune)}
+   1        {Channel A tone period (4b coarse tune)}
+   2        {Channel B tone period (8b fine tune)}
+   3        {Channel B tone period (4b coarse tune)}
+   4        {Channel C tone period (8b fine tune)}
+   5        {Channel C tone period (4b coarse tune)}
+   6        {Noise generator (5b)}
+   
+# Reg7: bits are active LOW  
+#        b7: not used on 8912 (no Port B on PSG8912)
+#        b6: PSG I/O Port A /direction: 0=in (keyboard), 1=out (keyboard disabled!!!)
+#        b5-b3: /Noise Enable C->A; bit5,4,3 a 0 => bruit sur canal C,B,A
+#        b2-b0: /Tone Enable C->A; bit2,1,0 a 0 => son sur canal C,B,A
+   7        {Mixer control}
+   
+  10        {Channel A Amplitude Control (5b:1b_use_modulator(if 1)+4bfixed level) volume/Hardware envelope enable}
+  11        {Channel B Amplitude Control (5b:1b_use_modulator(if 1)+4bfixed level) volume/Hardware envelope enable}
+  12        {Channel C Amplitude Control (5b:1b_use_modulator(if 1)+4bfixed level) volume/Hardware envelope enable}
+  # Periode (en s) = 125000 * 16b_R14_R13 / 16
+  13        {Hardware envelope period (Frequency fine tune (8b))}
+  14        {Hardware envelope period (Frequency coarse tune (8b))}
+  # B3:Hold, B2:Alternate, B1:Attack, B0:Continue
+  15        {Hardware envelope shape (4b)}
+ 
+ ENV 
+ 00xx   \_______________
+ 
+ 01xx   /|______________
+ 
+ 1000   \|\|\|\|\|\|\|\|
+ 
+ 1001   \_______________
+ 
+ 1010   \/\/\/\
+ 
+ 1011   \|--------------
+ 
+ 1100   /|/|/|/|/|/|/|/
+ 
+ 1101   /---------------
+ 
+ 1110   /\/\/\/\
+ 
+ 1111   /|______________
+ 
+  16        {I/O Port Data Store (Used for reading the keyboard): Intermediate Data Storage between PSG/CPU data bus and PSG I/O Port A; no effect on Sound}
+  17        {Not available on 8912}
+  
