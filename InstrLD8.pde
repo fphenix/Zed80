@@ -84,7 +84,7 @@ class InstrLD8 extends InstrLD16 {
     int hl = this.getReg16Val(this.reg.HLpos);
     this.setRegVal(r, this.getFromPointer(hl));
     this.comment = "Value at addr contained in " + sName + " (" + this.hex4(hl);
-    this.comment += ": " + this.getRegVal(r) + ") copied into register " + rName;
+    this.comment += ": " + this.hex2(this.getRegVal(r)) + ") copied into register " + rName;
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -217,7 +217,7 @@ class InstrLD8 extends InstrLD16 {
     this.setPMTRpCycles(3, 4, 13, 1, 2);
     int val8 = this.getRegVal(this.reg.Apos);
     this.putInPointer(mem16, val8);
-    this.comment = "Load content of addr " + this.hex4(mem16) + ", value " + this.hex2(val8) + ", in A";
+    this.comment = "Load addr " + this.hex4(mem16) + ", with value " + this.hex2(val8) + ", in A";
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -228,6 +228,6 @@ class InstrLD8 extends InstrLD16 {
     this.setPMTRpCycles(3, 4, 13, 1, 2);
     int val8 = this.getRegVal(this.reg.Apos);
     this.putInPointer(mem16, val8);
-    this.comment = "Load content of addr (" + dName + "), value " + this.hex2(val8) + ", in A";
+    this.comment = "Load addr in (" + dName + "), with value " + this.hex2(val8) + ", in A";
   }
 }

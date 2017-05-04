@@ -1,12 +1,17 @@
 // Used by Class Opcodes
 
 public class Instruction extends InstrLD8 {
-  Instruction (Registers r, RAM memref, Firmware romref) {
+  
+  Instruction () {
     this.opcode = "";
-    this.reg = r;
-    this.ram = memref;
-    this.rom = romref;
     this.NOP();
+  }
+
+  void setRef(Registers regref, Pinout pinref, Memory memref, Firmware fwvref) {
+    this.reg = regref;
+    this.pin = pinref;
+    this.mem = memref;
+    this.fwv = fwvref;
   }
 
   // -----------------------------------------------------------------------------------------------------

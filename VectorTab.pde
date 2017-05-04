@@ -1,15 +1,24 @@
 class VectorTab {
   String vectTitle;
 
-  GateArray ga; // initialised in Fireware setRef();
-  Registers reg; // initialised in Fireware setRef();
-  RAM ram; // initialised in Fireware setRef();
-  D7 d7;
+  GateArray ga; // ref
+  Registers reg; // ref
+  Memory mem; // ref
+  RAM ram; // ref
+  D7 d7; // ref
 
   String currFileName;
   int[] fileInfo;
 
   VectorTab () {
+  }
+
+  void setRef (Z80 zref, GateArray garef, Memory memref, D7 d7ref) {
+    this.ga = garef;
+    this.reg = zref.reg;
+    this.mem = memref;
+    this.ram = memref.ram;
+    this.d7 = d7ref;
   }
 
   void vecBA10 () {
@@ -162,7 +171,7 @@ class VectorTab {
     // * in all cases, BC, DE and IX and  the  other  flags  are  corrupt, and the
     // others are preserved
     int loadaddr = ((this.reg.reg8b[this.reg.Hpos] << 8) + this.reg.reg8b[this.reg.Lpos]) & 0xFFFF;
-    this.d7.loadFile(this.currFileName, this.ram, loadaddr);
+    this.d7.loadFile(this.currFileName, this.mem, loadaddr);
     this.reg.reg8b[this.reg.Hpos] = (fileInfo[2] >> 8) & 0xFF;
     this.reg.reg8b[this.reg.Lpos] = (fileInfo[2] >> 0) & 0xFF;
     this.reg.writeCF(1); // errors not yet supported!

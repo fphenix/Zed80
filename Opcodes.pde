@@ -4,22 +4,29 @@ class Opcodes {
   // instanciation
   Instruction instr;
   Cycles cycle;
+
   // reference
   Registers reg;
-  RAM ram;
-  Firmware rom;
+  Pinout pin;
+  Memory mem;
+  Firmware fwv;
 
   int opcode, opcode2;
   int pc;
 
   // =============================================================================================
-  Opcodes (Registers r, RAM memref, Firmware romref) {
-    this.reg = r;
-    this.ram = memref;
-    this.rom = romref;
-    this.instr = new Instruction(this.reg, this.ram, this.rom);
+  Opcodes () {
+    this.instr = new Instruction();
     this.opcode = 0x00;
     this.cycle = new Cycles();
+  }
+
+  void setRef(Registers regref, Pinout pinref, Memory memref, Firmware fwvref) {
+    this.reg = regref;
+    this.pin = pinref;
+    this.mem = memref;
+    this.fwv = fwvref;
+    this.instr.setRef(regref, pinref, memref, fwvref);
   }
 
   // =============================================================================================
@@ -27,7 +34,7 @@ class Opcodes {
     this.opcode  = opc[0];
     this.opcode2 = opc[1];
     this.pc = this.reg.specialReg[this.reg.PCpos];
-    int r, s, d, b, c, p, q, ixy, en, mode;
+    int r, s, d, b, c, p, q, m, ixy, en, mode;
 
     // -- NOP -------------------------------------------------------------------------------------
     // -- 0000_0000 : 0x00
@@ -172,6 +179,11 @@ class Opcodes {
     } else if (this.opcode == 0xDE) {
       this.instr.SBCAval(opc[1]);
 
+      // -- DAA -------------------------------------------------------------------------------------
+      // -- 0010_0111 : 0x27
+    } else if (this.opcode == 0x27) {
+      this.instr.DAA();
+
       // -- EX DE, HL -------------------------------------------------------------------------------------
       // -- 1110_1011 : 0xEB
     } else if (this.opcode == 0xEB) {
@@ -211,7 +223,7 @@ class Opcodes {
       // -- 1111_1011 : 0xFB
       // -- 1111_0011 : 0xF3
     } else if ((this.opcode & 0xF7) == 0xF3) {
-      en = ((this.opcode & 0x40) >> 3);
+      en = ((this.opcode & 0x08) >> 3);
       this.instr.EIDI(en);
 
       // -- RLCA, RRCA, RLA, RRA -----------------------------------------------------------------------
@@ -330,14 +342,37 @@ class Opcodes {
       c = ((this.opcode & 0x38) >> 3); 
       this.instr.RETccc(c);
 
+      // -- RST p --------------------------------------------------------------------------------------
+      // -- 11pp_p111 : 0xC7, 0xCF, D7, DF, E7, EF, F7, 0xFF
+    } else if ((this.opcode & 0xC7) == 0xC7) {
+      p = ((this.opcode & 0x38) >> 3); 
+      this.instr.RSTp(p);
+
+      // -- IN A,(n) --------------------------------------------------------------------------------------
+      // -- 1101_1011 nnnn_nnnn : 0xDBnn
+    } else if (this.opcode == 0xDB) {
+      this.instr.INAn(opc[1]);
+
+      // -- OUT (n),A --------------------------------------------------------------------------------------
+      // -- 1101_0011 nnnn_nnnn : 0xD3nn
+    } else if (this.opcode == 0xD3) {
+      this.instr.OUTnA(opc[1]);
+
       // ***************************************************************************************
       // **    Prefix 0xCB
       // ***************************************************************************************
     } else if (this.opcode == 0xCB) {
 
-      // -- BIT b, r -----------------------------------------------------------------------------------
-      // -- 1100_1011 01bb_brrr : 0xCB40 to 0xCB7F
-      if  ((this.opcode2 & 0xC0) == 0x40) {
+      // -- RLC, RL, RRC, RR, SLA, SRA, SRL, SLL ------------------------------------------------------------
+      // -- 1100_1011 00mm_mrrr : 0xCB00 to 0xCB3F
+      if  ((this.opcode2 & 0xC0) == 0x00) {
+        m = (this.opcode2 & 0x38) >> 3;
+        r = (this.opcode2 & 0x07) >> 0;
+        this.instr.RandSr(m, r);
+
+        // -- BIT b, r -----------------------------------------------------------------------------------
+        // -- 1100_1011 01bb_brrr : 0xCB40 to 0xCB7F
+      } else if  ((this.opcode2 & 0xC0) == 0x40) {
         b = (this.opcode2 & 0x38) >> 3;
         r = (this.opcode2 & 0x07) >> 0;
         this.instr.BITbr(b, r);
@@ -433,6 +468,50 @@ class Opcodes {
         // -- 1110_1101 01??_?100 : 0xED44 (and also 0xED54, 64, 74, 4C, 5C, 6C, 7C)
       } else if ((this.opcode2 & 0xC7) == 0x44) {
         this.instr.NEG();
+
+        // -- RLD, RRD -------------------------------------------------------------------------------
+        // -- 1110_1101 0110_d111 : 0xED6F, 0xED67
+      } else if ((this.opcode2 & 0xF7) == 0x67) {
+        d = ((this.opcode2 & 0x08) >> 3); // 0: RRD, 1: RLD
+        this.instr.RlrD(d);
+
+        // -- IN r,(C) and IN F, (C) or IN (C) -------------------------------------------------------------
+        // -- 1110_1101 01rr_r000 : 0xED40, 48, 50, 58, 60, 68, 70 (F), 78
+      } else if ((this.opcode2 & 0xC7) == 0x40) {
+        r = (this.opcode2 & 0x38) >> 3;
+        this.instr.INrC(r);
+
+        // -- OUT (C),r and OUT (C), 0 ----------------------------------------------------------------------
+        // -- 1110_1101 01rr_r001 : 0xED41, 49, 51, 59, 61, 69, 71 (0), 79
+      } else if ((this.opcode2 & 0xC7) == 0x41) {
+        r = (this.opcode2 & 0x38) >> 3;
+        this.instr.OUTCr(r);
+
+        // -- RETI & RETN ----------------------------------------------------------------------
+        // -- 1110_1101 0100_1101 : 0xED4D : RETI
+        // -- 1110_1101 01??_?101 : 0xED45, undoc : 55, 5D, 65, 6D, 75, 7D : RETN
+      } else if ((this.opcode2 & 0xC7) == 0x45) {
+        m  = (this.opcode2 & 0x38) >> 3;
+        if (m == 1) {
+          this.instr.RETI();
+        } else {
+          this.instr.RETN();
+        }
+
+        // -- IM m  (m : 1, 2 or 0) -----------------------------------------------------------
+        // -- 1110_1101 01?0_?110 : 0xED46, undoc : 66, 4E, 6E : IM 0
+        // -- 1110_1101 01?1_0110 : 0xED56, undoc : 76 : IM 1
+        // -- 1110_1101 01?1_1110 : 0xED5E, undoc : 7E : IM 2
+      } else if ((this.opcode2 & 0xC7) == 0x46) {
+        m = (this.opcode2 & 0x18) >> 3;
+        if ((m & 0x02) == 0x00) {
+          mode = 0;
+        } else if ((m & 0x01) == 0x00) {
+          mode = 1;
+        } else {
+          mode = 2;
+        }
+        this.instr.IMm(mode);
 
         // --NOP by default ---------------------------------------------------------------------
       } else {

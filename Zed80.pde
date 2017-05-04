@@ -8,11 +8,11 @@ void setup () {
   log = new Log(); // Create a new file in the sketch directory
   cpc = new CPC();
 
-  log.logModeOFF();
+  log.logModeON();
   cpc.setPC(0xBEA7);
   cpc.setSP(0xBFFA);
   cpc.setBKPOff(); // off
-  // cpc.setBKP(-0x4034); // on
+  //cpc.setBKP(0x04F7); // on
   cpc.setReg(0xB0, 0xFF, 0x00, 0x40, 0xAB, 0xFF, 0xFF, 0x80);
   //cpc.hideDebugWindow();
   // cpc.ram.testASM();
@@ -31,7 +31,8 @@ void end () {
 }
 
 void mouseClicked() {
-  cpc.step();
+  cpc.z80.reg.setBKPOff();
+  cpc.go();
 }
 
 void keyPressed() {
@@ -40,22 +41,23 @@ void keyPressed() {
 
 /*
 CPC cpc :
- * Firmware rom:
+ * Firmware fwv:
  * * VectorTab vt
  * RAM ram:
- * * ref Firware rom
+ * * ref Firware fwv
  * Z80 z80:
  * * ref RAM ram
- * * ref Firware rom
+ * * ref Firware fwv
  * * Register reg
  * * Opcodes opcode
  * * * ref Registers reg
  * * * ref RAM ram
- * * * ref Firware rom
+ * * * ref Firware fwv
  * * * Instruction instr
  * * * * ref Registers regArray
  * * * * ref RAM ram
- * * * * ref Firware rom
+ * * * * ref Firware fwv
+ * * * * ref Pinout pin
  * * * Cycle cycle
  * * Pinout pin
  * D7 diskette:
@@ -63,7 +65,7 @@ CPC cpc :
  * * ref Z80 z80
  * * * Registers reg
  * * ref RAM ram
- * * ref Firmware rom
+ * * ref Firmware fwv
  * PSG psg:
  * * ref Z80 z80
  */

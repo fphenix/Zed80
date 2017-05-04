@@ -1,13 +1,15 @@
 class CPC {
   D7 diskette;
-  RAM ram;
+  //  RAM ram;
+  //  ROM rom;
   Z80 z80;
   GateArray ga;
-  Firmware rom;
+  Firmware fwv;
   PSG psg;
+  Memory mem;
 
   int iter = 0;
-  int iterMax = 200000;
+  int iterMax = 2000000;
   int speed;
   boolean stepForward;
   boolean freerun;
@@ -16,26 +18,31 @@ class CPC {
     this.stepForward = false;
     this.freerun = false;
 
-    this.rom = new Firmware();
-    this.ram = new RAM(this.rom);
-    this.ram.RETVectors();
-    this.z80 = new Z80(this.ram, this.rom);
+    this.fwv = new Firmware();
+    this.mem = new Memory();
+    this.z80 = new Z80();
+    this.ga = new GateArray();
+    this.psg = new PSG();
+    this.diskette = new D7("HEADOVER.DSK");
+
+    // set References
+    this.z80.setRef(this.mem, this.fwv);
+    this.fwv.setRef(this.z80, this.ga, this.mem, this.diskette);
+    this.ga.setRef(this.z80, this.mem, this.fwv);
+    this.mem.setRef(this.fwv);
+    this.psg.setRef(this.z80);
+
+    this.mem.RETVectors();
+    this.mem.bootUpMem();
     this.z80.initPC(0);
 
-    this.diskette = new D7("HEADOVER.DSK");
     //this.diskette.readFile();
-    this.diskette.loadFile("HEADOVER.BIN", this.ram);
+    this.diskette.loadFile("HEADOVER.BIN", this.mem);
     //this.diskette.loadFile("HEADOVER.I", this.ram, 0x4000);
     //this.diskette.loadFile("HEADOVER.II", this.ram, 0xc000);
     //this.diskette.loadFile("HEADOVER.III", this.ram);
-    this.ram.memDump();
-
-    this.ga = new GateArray();
-    this.psg = new PSG(this.z80);
-
-    // set References
-    this.rom.setRef(this.z80, this.ga, this.ram, this.diskette);
-    this.ga.setRef(this.z80, this.ram, this.rom);
+    
+    this.mem.romDump();
   }
 
   void setReg(int b, int c, int d, int e, int h, int l, int a, int f) {
@@ -81,11 +88,13 @@ class CPC {
   }
 
   void go() {
+    loop();
     this.freerun = true;
     this.run();
   }
 
   void step() {
+    loop();
     this.stepForward = true;
     this.z80.reg.setBKPOff();
     this.run();
@@ -101,17 +110,21 @@ class CPC {
         println("Reached max iter");
         this.halt();
         noLoop();
+        break;
       }
-//      loadPixels();
+      //      loadPixels();
       if ((this.iter % 20) == 0) {
         this.ga.display();
-//        loadPixels();
-//      } else {
-//        updatePixels();
+        //        loadPixels();
+        //      } else {
+        //        updatePixels();
       }
       if ((this.z80.reg.breakMode) && (this.z80.reg.breakPoint == this.z80.pc)) {
         println("Break Point at 0x" + hex(this.z80.pc, 4));
+        this.mem.memDump();
         this.halt();
+        noLoop();
+        break;
       } else if (this.stepForward || this.freerun) {
         this.z80.step();
         this.ga.setInstr(this.z80.opcode.instr.asmInstr);

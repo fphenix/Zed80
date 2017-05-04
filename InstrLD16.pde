@@ -90,7 +90,7 @@ class InstrLD16 extends InstrAL8 {
       val16 = this.getReg16Val(d);
     }
     this.put16InPointer(mem16, val16);
-    this.comment = "Load content of addr " + this.hex4(mem16) + ", value ";
+    this.comment = "Load content of addr " + this.hex4(mem16) + ", with value ";
     this.comment += this.hex4(val16) + ", in 16b reg " + dName;
   }
 
@@ -114,7 +114,7 @@ class InstrLD16 extends InstrAL8 {
     this.setPMTRpCycles(3, 5, 16, 1, 2);
     int val16 = this.reg.reg16b[this.reg.HLpos];
     this.put16InPointer(mem16, val16);
-    this.comment = "Load content of addr " + this.hex4(mem16) + ", value " + this.hex4(val16) + ", in HL";
+    this.comment = "Load content of addr " + this.hex4(mem16) + ", with value " + this.hex4(val16) + ", in HL";
   }
 
   // -----------------------------------------------------------------------------------------------------

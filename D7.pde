@@ -682,8 +682,8 @@ class D7 {
     saveJSONArray(json, "./data/D7files.json");
   }
 
-  void loadFile(String filename, RAM ram) {
-    this.loadFile(filename, ram, -1);
+  void loadFile(String filename, Memory mem) {
+    this.loadFile(filename, mem, -1);
   }
 
   int[] getreadFileInfo(String filename) {
@@ -713,7 +713,7 @@ class D7 {
     return fileInfo;
   }
 
-  void loadFile(String filename, RAM ram, int forceloadaddr) {
+  void loadFile(String filename, Memory mem, int forceloadaddr) {
     JSONArray json;
     JSONObject currfile;
     boolean found = false;
@@ -739,7 +739,7 @@ class D7 {
         loadaddr = forceloadaddr;
       }
 
-      ram.pokeList(loadaddr, data);
+      mem.pokeList(loadaddr, data);
 
       log.logln("Done loading "  + fname + " @ 0x" + hex(loadaddr, 4 ) + " !");
       break;

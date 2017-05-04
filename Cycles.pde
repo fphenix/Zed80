@@ -23,7 +23,7 @@ class Cycles {
   // increases everytime the CPU fetches an opcode or opcode prefix.
   void countR (int n) {
     int tmp = this.R;
-    this.R = ((tmp + n) & 0x7F) | (tmp & 0x80); // only 7 lsb increment; bit 7 stays the same (can me modified by the LD R, A instructions);
+    this.R = (tmp & 0x80) | ((tmp + n) & 0x7F); // only 7 lsb increment; bit 7 stays the same (can me modified by the LD R, A instructions);
   }
 
   int getR () {

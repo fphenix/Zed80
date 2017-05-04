@@ -33,12 +33,12 @@ class InstrExTxSrch extends InstrStack {
   // -----------------------------------------------------------------------------------------------------
   void EXcontSPHL () {
     int memPointer = this.reg.specialReg[this.reg.SPpos];
-    int vall = this.ram.peek(memPointer + this.reg.LSB);
-    int valh = this.ram.peek(memPointer + this.reg.MSB);
+    int vall = this.mem.peek(memPointer + this.reg.LSB);
+    int valh = this.mem.peek(memPointer + this.reg.MSB);
     this.asmInstr = "EX (SP), HL";
     this.setPMTRpCycles(1, 5, 19, 1, 0);
-    this.ram.poke(memPointer + this.reg.LSB, this.getRegVal(this.reg.Lpos));
-    this.ram.poke(memPointer + this.reg.MSB, this.getRegVal(this.reg.Hpos));
+    this.mem.poke(memPointer + this.reg.LSB, this.getRegVal(this.reg.Lpos));
+    this.mem.poke(memPointer + this.reg.MSB, this.getRegVal(this.reg.Hpos));
     this.setRegVal(this.reg.Hpos, valh);
     this.setRegVal(this.reg.Lpos, vall);
     this.comment = "Exchange the values in (SP) and HL registers";
@@ -48,13 +48,13 @@ class InstrExTxSrch extends InstrStack {
   void EXcontSPIXY (int ixy) {
     String ixyName = this.reg.reg16Name[this.reg.IXpos + ixy];    
     int memPointer = this.reg.specialReg[this.reg.SPpos];
-    int vall = this.ram.peek(memPointer + 0);
-    int valh = this.ram.peek(memPointer + 1);
+    int vall = this.mem.peek(memPointer + 0);
+    int valh = this.mem.peek(memPointer + 1);
     this.asmInstr = "EX (SP), " + ixyName;
     this.setPMTRpCycles(2, 6, 23, 1, 0);
     int r16 = this.getReg16Val(this.reg.IXpos + ixy);
-    this.ram.poke(memPointer + 0, this.rshiftMask(r16, 0, 0xFF)); // LSB
-    this.ram.poke(memPointer + 1, this.rshiftMask(r16, 8, 0xFF)); // MSB
+    this.mem.poke(memPointer + 0, this.rshiftMask(r16, 0, 0xFF)); // LSB
+    this.mem.poke(memPointer + 1, this.rshiftMask(r16, 8, 0xFF)); // MSB
     this.setReg16Val(this.reg.IXpos + ixy, (valh << 8) + vall);
     this.comment = "Exchange the values in (SP) and " + ixyName + " registers";
   }
@@ -98,7 +98,7 @@ class InstrExTxSrch extends InstrStack {
     // Flags
     this.reg.resetFlagBit(this.reg.HFpos);
     this.reg.resetFlagBit(this.reg.NFpos);
-    this.reg.writeFlagBit(this.reg.PVFpos, this.isNotZero(bc));
+    this.reg.writeFlagBit(this.reg.PVFpos, this.isNotZero16(bc));
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -121,7 +121,7 @@ class InstrExTxSrch extends InstrStack {
     // Flags
     this.reg.resetFlagBit(this.reg.HFpos);
     this.reg.resetFlagBit(this.reg.NFpos);
-    this.reg.writeFlagBit(this.reg.PVFpos, this.isNotZero(bc));
+    this.reg.writeFlagBit(this.reg.PVFpos, this.isNotZero16(bc));
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -148,7 +148,7 @@ class InstrExTxSrch extends InstrStack {
     // Flags
     this.reg.resetFlagBit(this.reg.HFpos);
     this.reg.resetFlagBit(this.reg.NFpos);
-    this.reg.writeFlagBit(this.reg.PVFpos, this.isNotZero(bc));
+    this.reg.writeFlagBit(this.reg.PVFpos, this.isNotZero16(bc));
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -175,7 +175,7 @@ class InstrExTxSrch extends InstrStack {
     // Flags
     this.reg.resetFlagBit(this.reg.HFpos);
     this.reg.resetFlagBit(this.reg.NFpos);
-    this.reg.writeFlagBit(this.reg.PVFpos, this.isNotZero(bc));
+    this.reg.writeFlagBit(this.reg.PVFpos, this.isNotZero16(bc));
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -200,7 +200,7 @@ class InstrExTxSrch extends InstrStack {
     this.reg.writeFlagBit(this.reg.ZFpos, this.isZero(compa));
     this.reg.writeFlagBit(this.reg.HFpos, (compa & 0x10) >> 4);
     this.reg.setFlagBit(this.reg.NFpos);
-    this.reg.writeFlagBit(this.reg.PVFpos, this.isNotZero(bc));
+    this.reg.writeFlagBit(this.reg.PVFpos, this.isNotZero16(bc));
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -229,7 +229,7 @@ class InstrExTxSrch extends InstrStack {
     this.reg.writeFlagBit(this.reg.ZFpos, this.isZero(compa));
     this.reg.writeFlagBit(this.reg.HFpos, (compa & 0x10) >> 4);
     this.reg.setFlagBit(this.reg.NFpos);
-    this.reg.writeFlagBit(this.reg.PVFpos, this.isNotZero(bc));
+    this.reg.writeFlagBit(this.reg.PVFpos, this.isNotZero16(bc));
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -254,7 +254,7 @@ class InstrExTxSrch extends InstrStack {
     this.reg.writeFlagBit(this.reg.ZFpos, this.isZero(compa));
     this.reg.writeFlagBit(this.reg.HFpos, (compa & 0x10) >> 4);
     this.reg.setFlagBit(this.reg.NFpos);
-    this.reg.writeFlagBit(this.reg.PVFpos, this.isNotZero(bc));
+    this.reg.writeFlagBit(this.reg.PVFpos, this.isNotZero16(bc));
     this.comment += "; New Flags = " + this.reg.logFlagBits();
   }
 
@@ -284,6 +284,6 @@ class InstrExTxSrch extends InstrStack {
     this.reg.writeFlagBit(this.reg.ZFpos, this.isZero(compa));
     this.reg.writeFlagBit(this.reg.HFpos, (compa & 0x10) >> 4);
     this.reg.setFlagBit(this.reg.NFpos);
-    this.reg.writeFlagBit(this.reg.PVFpos, this.isNotZero(bc));
+    this.reg.writeFlagBit(this.reg.PVFpos, this.isNotZero16(bc));
   }
 }

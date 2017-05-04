@@ -32,8 +32,9 @@ class InstrWrap {
   String comment;
 
   Registers reg;
-  RAM ram;
-  Firmware rom;
+  Pinout pin;
+  Memory mem;
+  Firmware fwv;
 
   //public final int BregCode = 0b000;
   //public final int CregCode = 0b001;
@@ -180,12 +181,28 @@ class InstrWrap {
     return p;
   }
 
+  int isZeroMask (int val, int mask) {
+    return ((val & mask) == 0) ? 1 : 0;
+  }
+
+  int isNotZeroMask (int val, int mask) {
+    return (1 - this.isZeroMask(val, mask)); // 1-0=1 (inv 0); 1-1=0 (inv 1)
+  }
+
   int isZero (int val) {
-    return (val == 0) ? 1 : 0;
+    return this.isZeroMask(val, 0xFF);
   }
 
   int isNotZero (int val) {
-    return (val == 0) ? 0 : 1;
+    return this.isNotZeroMask(val, 0xFF);
+  }
+
+  int isZero16 (int val) {
+    return this.isZeroMask(val, 0xFFFF);
+  }
+
+  int isNotZero16 (int val) {
+    return this.isNotZeroMask(val, 0xFFFF);
   }
 
   // ----------------------------------------------------------------------
@@ -260,7 +277,7 @@ class InstrWrap {
   // ----------------------------------------------------------------------
   // put a 8b Byte at a 16b memory address
   void putInPointer (int pointer16, int val8) {
-    this.ram.poke(pointer16, val8 & 0xFF); // byte
+    this.mem.poke(pointer16, val8 & 0xFF); // byte
   }
 
   // put a 8b Byte at a 16b memory address pointed by a double-register
@@ -297,7 +314,7 @@ class InstrWrap {
 
   // get a 8b Byte from a 16b memory address
   int getFromPointer (int pointer16) {
-    return (this.ram.peek(pointer16) & 0xFF);
+    return (this.mem.peek(pointer16) & 0xFF);
   }
 
   // get a 8b Byte from a 16b memory address pointed by a double-register
@@ -324,9 +341,9 @@ class InstrWrap {
   void putInStack (int vall, int valh) {
     int stackPointer = this.reg.specialReg[this.reg.SPpos];
     stackPointer--;
-    this.ram.poke(stackPointer, this.rshiftMask(valh, 0, 0xFF)); // MSB
+    this.mem.poke(stackPointer, this.rshiftMask(valh, 0, 0xFF)); // MSB
     stackPointer--;
-    this.ram.poke(stackPointer, this.rshiftMask(vall, 0, 0xFF)); // LSB
+    this.mem.poke(stackPointer, this.rshiftMask(vall, 0, 0xFF)); // LSB
     this.reg.specialReg[this.reg.SPpos] = stackPointer;
   }
 
@@ -341,9 +358,9 @@ class InstrWrap {
   int[] getFromStack () {
     int stackPointer = this.reg.specialReg[this.reg.SPpos];
     int val[] = new int[2]; //0: LSB; 1: MSB
-    val[0] = this.maskLShift(this.ram.peek(stackPointer), 0, 0xFF); // LSB
+    val[0] = this.maskLShift(this.mem.peek(stackPointer), 0, 0xFF); // LSB
     stackPointer++;
-    val[1] = this.maskLShift(this.ram.peek(stackPointer), 0, 0xFF); // MSB
+    val[1] = this.maskLShift(this.mem.peek(stackPointer), 0, 0xFF); // MSB
     stackPointer++;
     this.reg.specialReg[this.reg.SPpos] = stackPointer;
     return val;

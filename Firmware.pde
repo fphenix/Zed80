@@ -1,4 +1,4 @@
-// ROM and Firmware
+// Firmware
 
 class Firmware {
   VectorTab vt;
@@ -6,17 +6,17 @@ class Firmware {
   Firmware () {
     this.vt = new VectorTab();
   }
-  
-  void setRef(Z80 zref, GateArray garef, RAM memref, D7 d7ref) {
-    this.vt.ga = garef;
-    this.vt.reg = zref.reg;
-    this.vt.ram = memref;
-    this.vt.d7 = d7ref;
+
+  void setRef(Z80 zref, GateArray garef, Memory memref, D7 d7ref) {
+    this.vt.setRef(zref, garef, memref, d7ref);
   }
 
   boolean isVector(int v) {
     switch (v) {
     case 0xBA10 :
+    case 0xBC06 :
+    case 0xBC08 :
+    case 0xBC0B :
     case 0xBC0E :
     case 0xBC32 :
     case 0xBC38 :
@@ -36,6 +36,15 @@ class Firmware {
     case 0xBA10 : 
       this.vt.vecBA10(); 
       break;
+    case 0xBC06 :
+      this.vt.vecBC06(); 
+      break;
+    case 0xBC08 :
+      this.vt.vecBC08(); 
+      break;
+    case 0xBC0B :
+      this.vt.vecBC0B(); 
+      break;
     case 0xBC0E :
       this.vt.vecBC0E(); 
       break;
@@ -52,7 +61,7 @@ class Firmware {
       this.vt.vecBC77(); 
       break;
     case 0xBC7A : 
-      this.vt.vecBC77(); 
+      this.vt.vecBC7A(); 
       break;
     case 0xBC83 : 
       this.vt.vecBC83(); 

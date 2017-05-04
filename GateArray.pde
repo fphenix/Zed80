@@ -9,11 +9,14 @@ class GateArray {
   int videoAddr;
   PImage screen;
   int pixIndex;
+  int cpcWidth;
+  int cpcHeight;
 
   int borderColor = color(0, 32, 0);
   int debugLine;
 
   float xscl, yscl;
+  int lines, columns;
   final int nbrow = 200;
   final int nbrowfullscreen = 272;
   int nbcol;
@@ -26,16 +29,49 @@ class GateArray {
   int regxpad = 55;
   int regypad = 16;
 
-  Z80 z80; // ref
+  Z80 z80;       // reference
   Registers reg; // reference
-  RAM ram; // reference
-  Firmware rom; // reference
+  RAM ram;       // reference
+  Memory mem;    // reference
+  Firmware fwv;  // reference
+
   String instr;
 
   int[] regsN = new int[5];
   int[] regsS = new int[4];
   int[] regsP = new int[4];
   int[] flagsArr = new int[8];
+
+  // Hard access registers (access thru a LD BC, 0x7Fxx; OUT (C), C) with nn as follows:
+  // * bits [7:6] : command
+  // * bit   [5]  : No effect on real Gate array, i.e. Normal CPC
+  // * bits [4:0] : command parameter
+  // commands+b5 (b[7:5]):
+  // b'000 : PENR : select a color reg; if bit 4 = 1 then border, else pen n° on [3:0]
+  // b'001 : PENR-ghost
+  // b'010 : INKR : value for the selected color reg: [4:0] number of the color HARD color (see colorHardware2Firmware())
+  // b'011 : INKR-ghost
+  // b'100 : RMR: Control Interrupt Counter, ROM mapping, Video Mode:
+  //         b4 : I: '1' will reset the interrupt counter
+  //         b3 : UR: Enable (0), Disable (1) the upper ROM paging (bank 3), 
+  //              can select which upper ROM with the IO address 0xDF00: 
+  //                ld bc, 0xDF00, OUT (c), c for Upper-ROM 0 (BASIC), 
+  //                0xDF07 for  Upper-ROM7 (AMDOS)
+  //         b2 : LR: Enable (0), Disable (1) the lower ROM paging
+  //         b[1:0] : VM : Select the video Mode (0, 1, 2 or 3)
+  // b'101 : RMR-Ghost
+  // b'110 : CPC pLus only
+  // b'11? : (param on bits [5:0]) : MMR : Memory mapping (extended RAM expansion)
+  // Note on RMR[3:2] : When ROM is Enabled: All CPU read, read the ROM, All CPU write, write the RAM at the same address
+  // Ex : lb bc, 0x7F8D; OUT (c), c; => 1000_1101 => RMR, Upper and Lower ROMs disabled, VM=1
+  int PENRPos = 0;
+  int PENR;
+  int INKRPos = 2;
+  int INKR;
+  int RMRPos = 4;
+  int RMR;
+  int MMRPos = 7;
+  int MMR;
 
   /* == Constructors ========================================= */
   GateArray () {
@@ -56,11 +92,11 @@ class GateArray {
     this.setMode(1);
   }
 
-  void setRef(Z80 ref, RAM memref, Firmware romref) {
+  void setRef(Z80 ref, Memory memref, Firmware fwvref) {
     this.z80 = ref;
     this.reg = this.z80.reg;
-    this.ram = memref;
-    this.rom = romref;
+    this.mem = memref;
+    this.fwv = fwvref;
     this.initArrays();
   }
 
@@ -104,53 +140,55 @@ class GateArray {
   }
 
   void calcScreenSize () {
-    this.yscl = this.mainscl;
+    this.yscl = 1.0 * this.mainscl;
+    this.lines = 25;
     switch (this.mode) {
     case 0:
       this.xscl = 2.0 * this.yscl;
       this.nbcol = 160;
       this.nbcolfullscreen = 192;
+      this.columns = 20;
       break;
-    case 1:
-      this.xscl = 1.0 * this.yscl;
-      this.nbcol = 320;
-      this.nbcolfullscreen = 384;
+    case 2:
+      this.xscl = 0.5 * this.yscl;
+      this.nbcol = 640;
+      this.nbcolfullscreen = 768;
+      this.columns = 80;
       break;
     case 3:
       this.xscl = 2.0 * this.yscl;
       this.nbcol = 160;
       this.nbcolfullscreen = 192;
+      this.columns = 20;
       break;
     default:
-      this.xscl = 0.5 * this.yscl;
-      this.nbcol = 640;
-      this.nbcolfullscreen = 768;
+      this.xscl = 1.0 * this.yscl;
+      this.nbcol = 320;
+      this.nbcolfullscreen = 384;
+      this.columns = 40;
       break;
     }
-    this.xpad = 5; 
-    this.ypad = 5;
+    this.xpad = floor((this.cpcWidth - (this.xdebug + (this.nbcolfullscreen * this.xscl))) / 3.0); 
+    this.ypad = floor((this.cpcHeight - (this.nbrowfullscreen * this.yscl)) / 2.0);
     this.borderxsize = floor((this.nbcolfullscreen - this.nbcol) / 2.0);
     this.borderysize = floor((this.nbrowfullscreen - this.nbrow) / 2.0);
   }
 
   void init () {
-    int w;
-    int h = height;
-
+    this.cpcHeight = height;
     this.initColor();
-    this.calcScreenSize();
 
     if (this.showDebug) {
-      w = 1100;
+      this.cpcWidth = 1100;
       this.xdebug = 300;
     } else {
-      w = 790;
+      this.cpcWidth = 790;
       this.xdebug = 0;
     }
-    surface.setSize(w, h);
+    this.calcScreenSize();
+    surface.setSize(this.cpcWidth, this.cpcHeight);
     screen.resize(this.nbcolfullscreen, this.nbrowfullscreen);
     screen.loadPixels();
-    println(this.mode, this.nbcolfullscreen, this.nbrowfullscreen, this.nbcol, this.nbrow, this.borderxsize, this.borderysize);
   }
 
   //===================================================================================
@@ -230,8 +268,8 @@ class GateArray {
     this.showScreen();
     this.screen.updatePixels();
     pushMatrix();
-    scale(this.xscl, this.yscl);
     translate(this.xpad, this.ypad);
+    scale(this.xscl, this.yscl);
     image(this.screen, 0, 0);
     popMatrix();
     if (this.showDebug) {
@@ -318,7 +356,7 @@ class GateArray {
     for (int j = 0; j < nblines; j ++) {
       text(this.hex4(memp), this.xpad, (this.debugLine+j)*this.regypad);
       for (int i = 0; i < 8; i++) {
-        text(hex(this.ram.peek(memp), 2), ((i+3)*this.regxpad/2.2)+this.xpad, (this.debugLine+j)*this.regypad);
+        text(hex(this.mem.peek(memp), 2), ((i+3)*this.regxpad/2.2)+this.xpad, (this.debugLine+j)*this.regypad);
         memp--;
       }
     }
@@ -341,7 +379,7 @@ class GateArray {
     for (int j = 0; j < nblines; j ++) {
       text(this.hex4(memp), this.xpad, (this.debugLine+j)*this.regypad);
       for (int i = 0; i < 8; i++) {
-        text(hex(this.ram.peek(memp), 2), ((i+3)*this.regxpad/2.2)+this.xpad, (this.debugLine+j)*this.regypad);
+        text(hex(this.mem.peek(memp), 2), ((i+3)*this.regxpad/2.2)+this.xpad, (this.debugLine+j)*this.regypad);
         memp++;
       }
     }
@@ -357,7 +395,7 @@ class GateArray {
   void showDebugScreen () {
     //debug box
     pushMatrix();
-    translate(((2.0 * this.xpad) + (this.nbcolfullscreen * this.xscl)), this.ypad);
+    translate(this.cpcWidth-this.xdebug-this.xpad, this.ypad);
     stroke(255, 255, 0);
     fill(0, 0, 127);
     rect(0, 0, this.xdebug, this.nbrowfullscreen*this.yscl);
@@ -421,6 +459,11 @@ class GateArray {
         }
       }
     }
+  }
+
+  // Firmware color number => RGB color
+  int colorHardware2Color (int hw) {
+    return this.colorPalette(this.colorHardware2Firmware(hw));
   }
 
   // n is the Firmware color number
@@ -489,8 +532,8 @@ class GateArray {
     switch (hw) {
     case 0x54 : 
       return 0;
-    case 0x50 : 
     case 0x44 : 
+    case 0x50 : 
       return 1;
     case 0x55 : 
       return 2;
@@ -711,7 +754,7 @@ class GateArray {
     int bytenb = this.calcByteNb(x);
     int pixnb = this.calcPixInByte(x);
     int byteaddr = this.calcByteAddr(ylinenb, bytenb);
-    int byteval = this.ram.peek(byteaddr);
+    int byteval = this.mem.peek(byteaddr);
     int pixval = this.getPixValInByte(byteval, pixnb);
     return pixval;
   }
@@ -721,8 +764,8 @@ class GateArray {
     int bytenb = this.calcByteNb(x);
     int pixnb = this.calcPixInByte(x);
     int byteaddr = this.calcByteAddr(ylinenb, bytenb);
-    int byteval = this.ram.peek(byteaddr);
-    this.ram.poke(byteaddr, this.setPixValInByte(byteval, pixnb, this.clampPixVal(pixval)));
+    int byteval = this.mem.peek(byteaddr);
+    this.mem.poke(byteaddr, this.setPixValInByte(byteval, pixnb, this.clampPixVal(pixval)));
   }
 
   // ====================================================================
