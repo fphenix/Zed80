@@ -20,14 +20,37 @@ Write Data (le PSG récupère la valeur placée sur &F4xx)   1   0
 Select AY register (le PSG sélectionne le numéro          1   1 
            de registre placé sur &F4xx)
 */
+import processing.sound.*;
 
 class PSG {
   Z80 z80; // ref
   
-  int[] reg = new int[16]; // 16 reg for PPI access of the PSG
-  String[] regComment = new String[16];
+  public final int psgReg_PER_A_LSB = 0;
+  public final int psgReg_PER_A_MSB = 1;
+  public final int psgReg_PER_B_LSB = 2;
+  public final int psgReg_PER_B_MSB = 3;
+  public final int psgReg_PER_C_LSB = 4;
+  public final int psgReg_PER_C_MSB = 5;
+  public final int psgReg_PER_NOISE = 6;
+  public final int psgReg_MIX_CTRL  = 7;
+  public final int psgReg_VOLUME_A = 8;
+  public final int psgReg_VOLUME_B = 9;
+  public final int psgReg_VOLUME_C = 10;
+  public final int psgReg_PER_HARDENV_LSB = 11;
+  public final int psgReg_PER_HARDENV_MSB = 12;
+  public final int psgReg_SHAPE_HARDENV = 13;
+  public final int psgReg_EXTDATA_PORTA = 14; // receives data from Keyboard & Joystick
+  public final int psgReg_EXTDATA_PORTB = 15; // not used on CPC
+  
+  private final int nbRegs = 16;
+  int[] regPSG = new int[this.nbRegs]; // 16 reg for PPI access of the PSG
+  String[] regComment = new String[this.nbRegs];
+  
+  SqrOsc squareOsc;
 
   PSG () {
+    this.init();
+    //this.squareOsc = new SqrOsc();
   }
 
   void setRef (Z80 z80ref) {
@@ -35,22 +58,33 @@ class PSG {
   }
   
   void init () {
-    regComment[0] = "PERIODE_A_LSB: Poids faible de la période sur 12 bits du son sur le canal A (gauche)";
-    regComment[1] = "PERIODE_A_MSB: Poids fort de la période sur 12 bits du son sur le canal A (gauche)";
-    regComment[2] = "PERIODE_B_LSB: Poids faible de la période sur 12 bits du son sur le canal B (milieu)";
-    regComment[3] = "PERIODE_B_MSB: Poids fort de la période sur 12 bits du son sur le canal B (milieu)";
-    regComment[4] = "PERIODE_C_LSB: Poids faible de la période sur 12 bits du son sur le canal C (droit)";
-    regComment[5] = "PERIODE_C_MSB: Poids fort de la période sur 12 bits du son sur le canal C (droit)";
-    regComment[6] = "BRUIT: Periode du générateur de bruit sur 5 bits";
-    regComment[7] = "CONTROLE: registre de Contrôle, '0' pour activer, b0,1 et 2: Canal A, B et C, b3,4 et 5: Bruit sur A, B et C; b6: Reg14 (clavier) en entrée";
-    regComment[8] = "VOLUME_A: Volume du canal A (bits [3:0]) et Selecteur ON/OFF d'enveloppe (bit 4); niveau logarithmique";
-    regComment[9] = "VOLUME_B: Volume du canal B (bits [3:0]) et Selecteur ON/OFF d'enveloppe (bit 4); niveau logarithmique";
-    regComment[10] = "VOLUME_C: Volume du canal C (bits [3:0]) et Selecteur ON/OFF d'enveloppe (bit 4); niveau logarithmique";
-    regComment[11] = "PERIODE_HARD_ENV_LSB: Poids faible de la période de la courbe d'enveloppe";
-    regComment[12] = "PERIODE_HARD_ENV_MSB: Poids fort de la période de la courbe d'enveloppe";
-    regComment[13] = "SHAPE_HARD_ENV: forme de la courbe du générateur de courbes d'enveloppe (bit0:Hold, bit1:Alternate, bit2:Attack, bit3:Continue)";
-    regComment[14] = "KEYBOARD_A: gestion du clavier via le port A du PSG; cf PPI";
-    regComment[15] = "KEYBOARD_B: Réservé pour Gestion du clavier via le port B du PSG; NON CABLE SUR CPC!!!";
+    this.regComment[this.psgReg_PER_A_LSB] = "PERIODE_A_LSB: Poids faible de la période sur 12 bits du son sur le canal A (gauche)";
+    this.regComment[this.psgReg_PER_A_MSB] = "PERIODE_A_MSB: Poids fort de la période sur 12 bits du son sur le canal A (gauche)";
+    this.regComment[this.psgReg_PER_B_LSB] = "PERIODE_B_LSB: Poids faible de la période sur 12 bits du son sur le canal B (milieu)";
+    this.regComment[this.psgReg_PER_B_MSB] = "PERIODE_B_MSB: Poids fort de la période sur 12 bits du son sur le canal B (milieu)";
+    this.regComment[this.psgReg_PER_C_LSB] = "PERIODE_C_LSB: Poids faible de la période sur 12 bits du son sur le canal C (droit)";
+    this.regComment[this.psgReg_PER_C_MSB] = "PERIODE_C_MSB: Poids fort de la période sur 12 bits du son sur le canal C (droit)";
+    this.regComment[this.psgReg_PER_NOISE] = "BRUIT: Periode du générateur de bruit sur 5 bits";
+    this.regComment[this.psgReg_MIX_CTRL] = "CONTROLE: registre de Contrôle Mixeur, '0' pour activer, b0,1 et 2: Canal A, B et C, b3,4 et 5: Bruit sur A, B et C; b6: Reg14 (clavier) en entrée";
+    this.regComment[this.psgReg_VOLUME_A] = "VOLUME_A: Volume du canal A (bits [3:0]) et Selecteur ON/OFF d'enveloppe (bit 4); niveau logarithmique";
+    this.regComment[this.psgReg_VOLUME_B] = "VOLUME_B: Volume du canal B (bits [3:0]) et Selecteur ON/OFF d'enveloppe (bit 4); niveau logarithmique";
+    this.regComment[this.psgReg_VOLUME_C] = "VOLUME_C: Volume du canal C (bits [3:0]) et Selecteur ON/OFF d'enveloppe (bit 4); niveau logarithmique";
+    this.regComment[this.psgReg_PER_HARDENV_LSB] = "PERIODE_HARD_ENV_LSB: Poids faible de la période de la courbe d'enveloppe";
+    this.regComment[this.psgReg_PER_HARDENV_MSB] = "PERIODE_HARD_ENV_MSB: Poids fort de la période de la courbe d'enveloppe";
+    this.regComment[this.psgReg_SHAPE_HARDENV] = "SHAPE_HARD_ENV: forme de la courbe du générateur de courbes d'enveloppe (bit0:Hold, bit1:Alternate, bit2:Attack, bit3:Continue)";
+    this.regComment[this.psgReg_EXTDATA_PORTA] = "KEYBOARD_A: gestion du clavier via le port A du PSG; cf PPI";
+    this.regComment[this.psgReg_EXTDATA_PORTB] = "KEYBOARD_B: Réservé pour Gestion du clavier via le port B du PSG; NON CABLE SUR CPC!!!";
+  }
+  
+  void writePSGreg(int regnb, int val8) {
+    this.regPSG[regnb & 0x0F] = val8 & 0xFF;
+    log.logln(this.regComment[regnb & 0x0F] + "; WRITE value=0x" + hex(val8, 2));
+  }
+  
+  int readPSGreg(int regnb) {
+    int val8 = this.regPSG[regnb & 0x0F] & 0xFF;
+    log.logln(this.regComment[regnb & 0x0F] + "; READ value=0x" + hex(val8, 2));
+    return val8;
   }
   
   int calcFreqHz (int periode) {

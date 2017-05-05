@@ -51,6 +51,7 @@ class GateArray {
     this.debugLine = 0;
 
     this.videoAddr = 0xC000;
+    this.initColor();
 
     screen = createImage(1, 1, RGB);
     this.setMode(1);
@@ -111,7 +112,6 @@ class GateArray {
 
   void init () {
     this.cpcHeight = height;
-    this.initColor();
 
     if (this.showDebug) {
       this.cpcWidth = 1100;

@@ -112,12 +112,8 @@ class CPC {
         noLoop();
         break;
       }
-      //      loadPixels();
       if ((this.iter % 20) == 0) {
         this.ga.display();
-        //        loadPixels();
-        //      } else {
-        //        updatePixels();
       }
       if ((this.z80.reg.breakMode) && (this.z80.reg.breakPoint == this.z80.pc)) {
         println("Break Point at 0x" + hex(this.z80.pc, 4));

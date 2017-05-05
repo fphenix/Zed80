@@ -171,7 +171,7 @@ class Pinout {
   // **             PPI/KEYBOARD/PSG
   // ********************************************************************************************************
 
-  int portADirIn = 0;
+  int portADirRead = 0;
   int currPortAdata = 0x00;
   int currPortBdata = 0x1E;
   int currPortCdata = 0x00;
@@ -223,7 +223,7 @@ class Pinout {
         // to this register. In order to read from the keyboard (through PSG register 0Eh),
         // a value of 92h must be written to this register.
         if (this.WR_b == 0) { // Write
-          this.portADirIn = ((this.DATA & 0x10) >> 4); // 1: In, 0:Out
+          this.portADirRead = ((this.DATA & 0x10) >> 4); // 1: In (read), 0:Out (write)
           this.currPortAdata = 0x00;
           this.currPortBdata = 0x1E;
           this.currPortCdata = 0x00;
@@ -239,25 +239,18 @@ class Pinout {
     }
   }
 
+
+
   int currPSGopWrite; // 1=W, 0=R
   int currPSGopReg; // 
   int currPSGopVal; // 
+  boolean currPSGopReady = false;
   //int tapeWrite;
   //int tapeMotorOn;
   int keyboardLine = 0;
 
-  /* Exemple de protocle:
-   OUT &F4xx,numéro de registre
-   OUT &F6xx,&C0                 ' Lecture du registre par le PSG
-   OUT &F6xx,0                   ' Validation de la donnée
-   OUT &F4xx,valeur
-   OUT &F6xx,&80                 ' Lecture du data par le PSG
-   OUT &F6xx,0                   ' Validation de la donnée
-   Ou en utilisant le vecteur:
-   ld a,registre
-   ld c,valeur
-   call &bd34
-   */
+
+
   void accessPSG() {
     // 0xF6xx Write :
     // b7:6 : PSG BDIR/BC1
@@ -271,20 +264,61 @@ class Pinout {
     int sel = (this.DATA & 0xC0) >> 6;
     switch (sel) {
     case 0 :
-      if (currPSGopWrite == 1) {
-        this.psg.reg[currPSGopReg] = currPSGopVal;
-      } else {
-        currPSGopVal = this.psg.reg[currPSGopReg];
+      if (this.currPSGopReady) {
+        if (this.currPSGopWrite == 1) {
+          this.psg.writePSGreg(currPSGopReg, this.currPSGopVal);
+        } else {
+          this.DATA = this.psg.readPSGreg(currPSGopReg);
+        }
+        this.currPSGopReady = false;
       }
       break;
     case 1 :
+      this.currPSGopWrite = 0;
+      if (this.portADirRead == 1) {
+        this.currPSGopVal = this.psg.readPSGreg(currPSGopReg);
+        this.DATA = this.currPSGopVal;
+        this.currPSGopReady = true;
+      }
       break;
     case 2 :
+      this.currPSGopWrite = 1;
+      if (this.portADirRead == 0) {
+        this.currPSGopVal = this.currPortAdata;
+        this.psg.writePSGreg(currPSGopReg, this.currPSGopVal);
+        this.currPSGopReady = true;
+      }
       break;
     default:
+      this.currPSGopReg = this.currPortAdata;
+      this.currPSGopReady = false;
     }
     this.keyboardLine = (this.DATA & 0x0F);
   }
+  /*  //write
+   0xF7xx 0x82 // PortA Out
+   0xF4xx regsel
+   0xF6xx 0xC0 // Reg Sel
+   0xF6xx 0x00 // validate
+   0xF4xx write data
+   0xF6xx 0x80 // data ==> regsel
+   0xF6xx 0x00 // validate
+   
+   //read
+   0xF4xx regsel
+   0xF6xx 0xC0 // Reg Sel
+   0xF6xx 0x00 // validate
+   0xF7xx 0x92 // PortA In
+   0xF6xx 0x40 // data <== regsel
+   0xF4xx read data ( IN A, (C) )
+   0xF7xx 0x82 // PortA Out
+   0xF6xx 0x00 // validate
+   */
+  /* On peut aussi utiliser le vecteur 0xBD34:
+   ld a,registre
+   ld c,valeur
+   call &bd34
+   */
 
   // ********************************************************************************************************
   // **             MAIN

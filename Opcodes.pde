@@ -13,6 +13,9 @@ class Opcodes {
 
   int opcode, opcode2;
   int pc;
+  int prevpc = -1;
+  boolean saidLooping = false;
+  String prevmsg = "";
 
   // =============================================================================================
   Opcodes () {
@@ -641,6 +644,7 @@ class Opcodes {
     }
     this.instr.setOpcode(tmps);
     this.displayInfo(opc);
+    this.prevpc = this.pc;
     this.incrCycles();
     this.reg.update();
   }
@@ -659,11 +663,26 @@ class Opcodes {
     if (!log.getLogMode()) {
       return;
     }
+    String msg = " : " + this.instr.asmInstr + " : " + this.instr.comment;
+    if (this.pc == this.prevpc) {
+      if (!this.saidLooping) {
+        log.logln("... Looping over previous Instruction ..." +  hex(this.pc) + " " +  hex(this.prevpc));
+        this.saidLooping = true;
+      } else {
+        this.prevmsg = msg;
+        return;
+      }
+    } else {
+      if (this.saidLooping) {
+        log.logln("''''''   " + this.prevmsg);
+        this.saidLooping = false;
+      }
+    }
     String s = "0x";
     s += hex(this.pc, 4) + " : ";
     for (int i = 0; i < abs(this.instr.Pcycles); i++) {
       s += hex(opcd[i], 2) + " ";
     }
-    log.logln(s + " : " + this.instr.asmInstr + " : " + this.instr.comment);
+    log.logln(s + msg);
   }
 }
