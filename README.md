@@ -1,6 +1,6 @@
 # Zed80
 
-AmstradCPC (446/6128) and Z80 Emulator in Processing!
+AmstradCPC (464/6128) and Z80 Emulator in Processing!
 
 Work very much in progress.
 
