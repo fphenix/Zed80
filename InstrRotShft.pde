@@ -204,4 +204,93 @@ class InstrRotShft extends InstrGPACC {
     cf = this.reg.getCF();
     this.reg.setFlags(sf, zf, yf, hf, xf, pvf, nf, cf);
   }
+
+  // -----------------------------------------------------------------------------------------------------
+  void RandSIXY (int mode, int ixy, int r, int twoscomp) {
+    int c = 0;
+    int prevc;
+    int mem16 = 0;
+    int val8 = 0;
+    int preval8;
+    int displacement = this.twoComp2signed(twoscomp);
+    String sign = (displacement < 0) ? "-" : "+";
+    String ixyName = this.reg.reg16Name[this.reg.IXpos + ixy] + sign + abs(displacement);    
+    String rName = this.regNameRS(r);
+    this.setPMTRpCycles(4, 6, 23, 4, 1);
+
+    prevc = this.reg.getCF();
+    mem16 = this.getReg16Val(this.reg.IXpos + ixy) + displacement;
+    preval8 = this.getFromPointer(mem16);
+    switch (mode) {
+    case 0 :  // RLC
+      this.asmInstr = "RLC";
+      this.comment = "Rotate Left Circular of (" + ixyName + "), Set b7 to Carry";
+      c = ((preval8 & 0x80) >> 7); // Carry = prev-bit7
+      val8 = ((preval8 << 1) & 0xFE) | c;
+      break;
+    case 1 :  // RRC
+      this.asmInstr = "RRC";
+      this.comment = "Rotate Right Circular of (" + ixyName + "), Set b0 to Carry";
+      c = (preval8 & 0x01);
+      val8 = ((preval8 >> 1) & 0x7F) | (c << 7);
+      break;
+    case 2 : // RL
+      this.asmInstr = "RL";
+      this.comment = "Rotate Left of (" + ixyName + ") and Carry";
+      c = ((preval8 & 0x80) >> 7);
+      val8 = ((preval8 << 1) & 0xFE) | prevc;
+      break;
+    case 3 : // RR
+      this.asmInstr = "RR";
+      this.comment = "Rotate Right of (" + ixyName + ") and Carry";
+      c = (preval8 & 0x01);
+      val8 = ((preval8 >> 1) & 0x7F) | (prevc << 7);
+      break;
+    case 4 :  // SLA
+      this.asmInstr = "SLA";
+      this.comment = "Shift Left Arithmetic of (" + ixyName + "), b0 reset, Set b7 to Carry";
+      c = ((preval8 & 0x80) >> 7); // Carry = prev-bit7
+      val8 = ((preval8 << 1) & 0xFE);
+      break;
+    case 5 :  // SRA
+      this.asmInstr = "SRA";
+      this.comment = "Shift Right Circular of (" + ixyName + "), bit7 unchanged, Set b0 to Carry";
+      c = (preval8 & 0x01);
+      val8 = ((preval8 >> 1) & 0x7F) | (preval8 & 0x80);
+      break;
+    case 6 :  // SLL aka SL1
+      this.asmInstr = "SLL/SL1";
+      this.comment = "Shift Left with 1 of (" + ixyName + "), b0 set, Set b7 to Carry";
+      c = ((preval8 & 0x80) >> 7); // Carry = prev-bit7
+      val8 = ((preval8 << 1) & 0xFE) | 0x01;
+      break;
+    case 7 :  // SRL
+      this.asmInstr = "SRL";
+      this.comment = "Shift Right Logical of (" + ixyName + "), bit 7 reset, Set b0 to Carry";
+      c = (preval8 & 0x01);
+      val8 = ((preval8 >> 1) & 0x7F);
+      break;
+    default:
+      println("BUG!");
+    }
+    this.asmInstr += " (" + ixyName + ")";
+    this.comment += "; value = " + hex2(val8) + "; Carry = " + c;
+    this.putInPointer(mem16, val8);
+    if (r != 6) {
+      this.setRegVal(r, val8);
+      this.asmInstr += ", " + rName;
+    }
+
+    // Flag byte:
+    int sf, zf, yf, hf, xf, pvf, nf, cf;
+    sf = this.rshiftMask(val8, this.reg.SFpos, 0x01);
+    zf = this.isZero(val8); 
+    yf = this.rshiftMask(val8, this.reg.YFpos, 0x01);
+    hf = 0;
+    xf = this.rshiftMask(val8, this.reg.XFpos, 0x01);
+    pvf = this.parity(val8);
+    nf = 0;
+    cf = c;
+    this.reg.setFlags(sf, zf, yf, hf, xf, pvf, nf, cf);
+  }
 }

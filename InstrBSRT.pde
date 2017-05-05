@@ -81,4 +81,49 @@ class InstrBSRT extends InstrRotShft {
     this.comment = "Reset Bit n°"+b+" in register " + rName;
   }
 
+  // -----------------------------------------------------------------------------------------------------
+  void BITbIXY (int b, int ixy, int twoscomp) {
+    int displacement = this.twoComp2signed(twoscomp);
+    String sign = (displacement < 0) ? "-" : "+";
+    String ixyName = this.reg.reg16Name[this.reg.IXpos + ixy] + sign + abs(displacement);    
+    int mem16 = this.getReg16Val(this.reg.IXpos + ixy) + displacement;
+    int val8 = this.getFromPointer(mem16);
+    this.asmInstr = "BIT " + b + ", (" + ixyName + ")";
+    this.setPMTRpCycles(4, 5, 20, 2, 2);
+    int z = (((val8 >> b) & 0x01) == 0) ? 1 : 0; // si bit=0, Z=1 sinon Z=0
+    this.comment = "Test Bit n°"+b+" in (" + ixyName + ") and set Z to " + z;
+
+    //Flags:
+    this.reg.writeFlagBit(this.reg.ZFpos, z);
+    this.reg.resetFlagBit(this.reg.NFpos);
+    this.reg.setFlagBit(this.reg.HFpos);
+  }
+
+  // -----------------------------------------------------------------------------------------------------
+  void SETbIXY (int b, int ixy, int twoscomp) {
+    int displacement = this.twoComp2signed(twoscomp);
+    String sign = (displacement < 0) ? "-" : "+";
+    String ixyName = this.reg.reg16Name[this.reg.IXpos + ixy] + sign + abs(displacement);    
+    int mem16 = this.getReg16Val(this.reg.IXpos + ixy) + displacement;
+    int val8 = this.getFromPointer(mem16);
+    this.asmInstr = "SET " + b + ", (" + ixyName + ")";
+    this.setPMTRpCycles(4, 6, 23, 2, 2);
+    val8 |= (0x01 << b);
+    this.putInPointer(mem16, val8);
+    this.comment = "Set Bit n°"+b+" in register " + ixyName;
+  }
+
+  // -----------------------------------------------------------------------------------------------------
+  void RESbIXY (int b, int ixy, int twoscomp) {
+    int displacement = this.twoComp2signed(twoscomp);
+    String sign = (displacement < 0) ? "-" : "+";
+    String ixyName = this.reg.reg16Name[this.reg.IXpos + ixy] + sign + abs(displacement);    
+    int mem16 = this.getReg16Val(this.reg.IXpos + ixy) + displacement;
+    int val8 = this.getFromPointer(mem16);
+    this.asmInstr = "RES " + b + ", (" + ixyName + ")";
+    this.setPMTRpCycles(4, 6, 23, 2, 2);
+    val8 &= ~(0x01 << b);
+    this.putInPointer(mem16, val8);
+    this.comment = "Reset Bit n°"+b+" in register " + ixyName;
+  }
 }
