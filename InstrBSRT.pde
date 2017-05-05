@@ -4,10 +4,10 @@
  #
  + BIT b,r
  + BIT b,(HL)
- # SET b,r
- # SET b,(HL)
- # RES b,r
- # RES b,(HL)
+ + SET b,r
+ + SET b,(HL)
+ + RES b,r
+ + RES b,(HL)
  #
  ###############################################################*/
 
@@ -85,6 +85,7 @@ class InstrBSRT extends InstrRotShft {
   void BITbIXY (int b, int ixy, int twoscomp) {
     int displacement = this.twoComp2signed(twoscomp);
     String sign = (displacement < 0) ? "-" : "+";
+    //String rName = this.regNameRS(r);
     String ixyName = this.reg.reg16Name[this.reg.IXpos + ixy] + sign + abs(displacement);    
     int mem16 = this.getReg16Val(this.reg.IXpos + ixy) + displacement;
     int val8 = this.getFromPointer(mem16);
@@ -100,9 +101,10 @@ class InstrBSRT extends InstrRotShft {
   }
 
   // -----------------------------------------------------------------------------------------------------
-  void SETbIXY (int b, int ixy, int twoscomp) {
+  void SETbIXY (int b, int ixy, int r, int twoscomp) {
     int displacement = this.twoComp2signed(twoscomp);
     String sign = (displacement < 0) ? "-" : "+";
+    String rName = this.regNameRS(r);
     String ixyName = this.reg.reg16Name[this.reg.IXpos + ixy] + sign + abs(displacement);    
     int mem16 = this.getReg16Val(this.reg.IXpos + ixy) + displacement;
     int val8 = this.getFromPointer(mem16);
@@ -110,13 +112,18 @@ class InstrBSRT extends InstrRotShft {
     this.setPMTRpCycles(4, 6, 23, 2, 2);
     val8 |= (0x01 << b);
     this.putInPointer(mem16, val8);
+    if (r != 6) {
+      this.setRegVal(r, val8);
+      this.asmInstr += ", " + rName;
+    }
     this.comment = "Set Bit n°"+b+" in register " + ixyName;
   }
 
   // -----------------------------------------------------------------------------------------------------
-  void RESbIXY (int b, int ixy, int twoscomp) {
+  void RESbIXY (int b, int ixy, int r, int twoscomp) {
     int displacement = this.twoComp2signed(twoscomp);
     String sign = (displacement < 0) ? "-" : "+";
+    String rName = this.regNameRS(r);
     String ixyName = this.reg.reg16Name[this.reg.IXpos + ixy] + sign + abs(displacement);    
     int mem16 = this.getReg16Val(this.reg.IXpos + ixy) + displacement;
     int val8 = this.getFromPointer(mem16);
@@ -124,6 +131,10 @@ class InstrBSRT extends InstrRotShft {
     this.setPMTRpCycles(4, 6, 23, 2, 2);
     val8 &= ~(0x01 << b);
     this.putInPointer(mem16, val8);
+    if (r != 6) {
+      this.setRegVal(r, val8);
+      this.asmInstr += ", " + rName;
+    }
     this.comment = "Reset Bit n°"+b+" in register " + ixyName;
   }
 }

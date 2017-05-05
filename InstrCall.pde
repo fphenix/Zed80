@@ -63,7 +63,7 @@ class InstrCall extends InstrBSRT {
       }
       this.reg.setPC(val16);
     } else {
-      this.setPMTRpCycles(-3, 3, 10, 1, 2);
+      this.setPMTRpCycles(3, 3, 10, 1, 2);
     }
     this.comment = "Conditional-CALL sub routine at " + this.hex4(val16);
     this.comment += " if " + cName + " is true : cond=" + testresult;

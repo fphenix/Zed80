@@ -100,6 +100,9 @@ class InstrIO extends InstrWrap {
     this.asmInstr = "OUT (C), " + rName;
     int val8 = (r == 6) ? 0 : this.getRegVal(r);
     int adr16 = this.getReg16Val(this.reg.BCpos);
+    if (adr16 == 0x7f8d) {
+    cpc.ga.mode = 1;
+    }
     this.pin.ADDR = adr16;
     this.pin.DATA = val8;
     this.setPMTRpCycles(2, 3, 12, 1, 1);

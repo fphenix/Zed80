@@ -592,6 +592,39 @@ class Opcodes {
       } else if (this.opcode2 == 0x36) {
         this.instr.LDcontIXYtcval(ixy, opc[2], opc[3]);
 
+        // ***************************************************************************************
+        // **    Prefix 0xDDCB and 0xFDCB
+        // ***************************************************************************************
+      } else if (this.opcode2 == 0xCB) {
+        d = opc[2];
+        b = m = (opc[3] & 0x38) >> 3;
+        r = (opc[3] & 0x07) >> 0;
+
+        // -- RLC IXY, RL, RRC, RR, SLA, SRA, SRL, SLL ------------------------------------------------------------
+        // -- 11i1_1101 0100_1011 dddd_dddd 00mm_mrrr : 0xFD CB dd 00 to 3F
+        if  ((opc[3] & 0xC0) == 0x00) {
+          this.instr.RandSIXY (m, ixy, r, d);
+
+          // -- BIT b, IXY -----------------------------------------------------------------------------------
+          // -- 11i1_1101 0100_1011 dddd_dddd 01bb_brrr : 0xDD CB dd 40 to 7F
+        } else if  ((this.opcode2 & 0xC0) == 0x40) {
+          this.instr.BITbIXY(b, ixy, d);
+
+          // -- SET b, IXY -----------------------------------------------------------------------------------
+          // -- 11i1_1101 1100_1011 dddd_dddd 11bb_brrr : c0 to ff
+        } else if  ((this.opcode2 & 0xC0) == 0xC0) {
+          this.instr.SETbIXY(b, ixy, r, d);
+
+          // -- RES b, IXY -----------------------------------------------------------------------------------
+          // -- 11i1_1101 1100_1011 dddd_dddd 10bb_brrr : 80 to bf
+        } else if  ((this.opcode2 & 0xC0) == 0x80) {
+          this.instr.RESbIXY(b, ixy, r, d);
+
+          // --NOP by default -------------------------------------------------------------------------------------
+        } else {
+          this.instr.NOTIMP(2);
+        }
+
         // --NOP by default -------------------------------------------------------------------------------------
       } else {
         this.instr.NOTIMP(2);

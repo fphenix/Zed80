@@ -17,7 +17,7 @@ void setup () {
   //cpc.hideDebugWindow();
   // cpc.ram.testASM();
   cpc.turnon();
-  cpc.setSpeed(50);
+  cpc.setSpeed(1000);
   background(0);
 }
 

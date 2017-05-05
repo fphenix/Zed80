@@ -9,7 +9,7 @@ class CPC {
   Memory mem;
 
   int iter = 0;
-  int iterMax = 2000000;
+  int iterMax = -1; //2000000;
   int speed;
   boolean stepForward;
   boolean freerun;
@@ -106,7 +106,7 @@ class CPC {
 
   void run () {
     for (int sp = 0; sp < this.speed; sp ++) {
-      if (this.iter == this.iterMax) {
+      if ((this.iterMax > 0) && (this.iter == this.iterMax)) {
         println("Reached max iter");
         this.halt();
         noLoop();

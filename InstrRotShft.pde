@@ -217,7 +217,6 @@ class InstrRotShft extends InstrGPACC {
     String ixyName = this.reg.reg16Name[this.reg.IXpos + ixy] + sign + abs(displacement);    
     String rName = this.regNameRS(r);
     this.setPMTRpCycles(4, 6, 23, 4, 1);
-
     prevc = this.reg.getCF();
     mem16 = this.getReg16Val(this.reg.IXpos + ixy) + displacement;
     preval8 = this.getFromPointer(mem16);
