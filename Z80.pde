@@ -32,10 +32,11 @@ class Z80 {
     this.nmi = 0;
   }
 
-  void setRef(Memory memref, Firmware fwvref) {
+  void setRef(Memory memref, Firmware fwvref, GateArray garef, PSG psgref) {
     this.mem = memref;
     this.fwv = fwvref;
-    this.opcode.setRef(this.reg, this.pin, this.mem, this.fwv);
+    this.opcode.setRef(this.reg, this.pin, memref, fwvref);
+    this.pin.setRef(memref, garef, psgref);
   }
 
   void initPC (int val) {

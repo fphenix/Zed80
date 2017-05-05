@@ -26,7 +26,7 @@ class CPC {
     this.diskette = new D7("HEADOVER.DSK");
 
     // set References
-    this.z80.setRef(this.mem, this.fwv);
+    this.z80.setRef(this.mem, this.fwv, this.ga, this.psg);
     this.fwv.setRef(this.z80, this.ga, this.mem, this.diskette);
     this.ga.setRef(this.z80, this.mem, this.fwv);
     this.mem.setRef(this.fwv);

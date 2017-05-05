@@ -1,6 +1,7 @@
 class Memory {
   RAM ram;
-  ROM[] roms;
+  ROM[] uproms;
+  ROM lorom;
   Firmware fwv; // ref
 
   PrintWriter memdmp;
@@ -11,42 +12,45 @@ class Memory {
   int addr;
   int datum; // byte of data
 
-  int sel; // ram or rom bank select
+  boolean lowerROMpaging;
+  boolean upperROMpaging;
+  int upperROMsel = 0;
 
   Memory () {
     this.ram = new RAM();
-    this.roms = new ROM[3];
-    this.roms[0] = new ROM("Lower", "Firmware.rom");
-    this.roms[1] = new ROM("Upper0", "Basic.rom");
-    this.roms[2] = new ROM("Upper7", "Amdos.rom");
+    this.lorom = new ROM("Lower", "Firmware.rom");
+    this.uproms = new ROM[8];
+    this.uproms[0] = new ROM("Upper0", "Basic.rom");
+    this.uproms[7] = new ROM("Upper7", "Amdos.rom");
     this.memdmp = null;
-    this.sel = 4;
+    this.lowerROMpaging = false;
+    this.upperROMpaging = false;
   }
 
   void setRef (Firmware fwvref) {
     this.fwv = fwvref;
   }
 
-  // peek can be done in rom or ram
-  int peek (int a) {
-    this.addr = a & 0xFFFF;
-    return (this.ram.data[this.addr] & 0xFF);
+  boolean isInRange(int a, int low, int high) {
+    if (low > high) {
+      return isInRange(a, high, low);
+    } else {
+      return ((a >= low) && (a <= high));
+    }
   }
 
   // peek can be done in rom or ram
-  int rompeek (int bank, int page, int a) {
-    this.addr = a & 0x3FFF;
-    if (bank == 0) {
-      return (this.roms[0].data[this.addr] & 0xFF);
+  int peek (int a) {
+    this.addr = a & 0xFFFF;
+    // if ROM paging selected for UpperROM, then read from the chosen Page (upperROMsel)
+    if (this.isInRange(a, 0xC000, 0xFFFF) && this.upperROMpaging) {
+      return (this.uproms[this.upperROMsel].data[this.addr & 0x3FFF] & 0xFF);
+    // if ROM paging selected for LowerROM, then read from it
+    } else if (this.isInRange(a, 0x0000, 0x3FFF) && this.lowerROMpaging) {
+      return (this.lorom.data[this.addr & 0x3FFF] & 0xFF);
+    // in any other case read the RAM
     } else {
-      switch (page) {
-      case 0:
-        return (this.roms[1].data[this.addr] & 0xFF);
-      case 7:
-        return (this.roms[2].data[this.addr] & 0xFF);
-      default:
-        return 0;
-      }
+      return (this.ram.data[this.addr] & 0xFF);
     }
   }
 
@@ -68,12 +72,12 @@ class Memory {
       a++;
     }
   }
-  
+
   void bootUpMem () {
-     for (int i = 0; i < 0x40; i++) {
-       // copy the RST table from AMDOS to RAM
-       this.poke(i, this.rompeek(3, 7, i));
-     }
+    for (int i = 0; i < 0x40; i++) {
+      // copy the RST table from AMDOS to RAM
+      this.poke(i, this.rompeek(3, 7, i));
+    }
   }
 
   void memDump () {
@@ -93,35 +97,45 @@ class Memory {
     this.memdmp.close(); // Finishes the file
   }
 
-  void romDump () {
-    this.romdmp = createWriter("data/RomDump.txt"); // Create a new file in the sketch directory
-    int val8, tmpbank, tmppage;
-    for (int rnb = 0; rnb < this.roms.length; rnb++) {
-      this.romdmp.println("  **  ROM : " + this.roms[rnb].id);
-      switch (rnb) {
-      case 1:
-        tmpbank = 3;
-        tmppage = 0;
-        break;
-      case 2:
-        tmpbank = 3;
-        tmppage = 7;
-        break;
-      default:
-        tmpbank = 0;
-        tmppage = 0;
+  // peek can be done in rom or ram
+  int rompeek (int bank, int page, int a) {
+    this.addr = a & 0x3FFF;
+    if (bank == 0) {
+      return (this.lorom.data[this.addr] & 0xFF);
+    } else {
+      return (this.uproms[page].data[this.addr] & 0xFF);
+    }
+  }
+
+  // 
+  String getRomId (int bank, int page) {
+    if (bank == 0) {
+      return this.lorom.id;
+    } else {
+      return this.uproms[page].id;
+    }
+  }
+
+  void romDumpRom (int tmpbank, int tmppage) {
+    int val8;  
+    this.romdmp.println("  **  ROM : " + this.getRomId(tmpbank, tmppage));
+    for (int a = 0; a < 0x04000; a++) {
+      if (a % 16 == 0) {
+        this.romdmp.print(hex(a, 4) + " : ");
       }
-      for (int a = 0; a < 0x04000; a++) {
-        if (a % 16 == 0) {
-          this.romdmp.print(hex(a, 4) + " : ");
-        }
-        val8 = this.rompeek(tmpbank, tmppage, a);
-        this.romdmp.print(hex(val8, 2) + " ");
-        if ((a + 1) % 16 == 0) {
-          this.romdmp.println("");
-        }
+      val8 = this.rompeek(tmpbank, tmppage, a);
+      this.romdmp.print(hex(val8, 2) + " ");
+      if ((a + 1) % 16 == 0) {
+        this.romdmp.println("");
       }
     }
+  }
+
+  void romDump () {
+    this.romdmp = createWriter("data/RomDump.txt"); // Create a new file in the sketch directory
+    this.romDumpRom(0, 0);
+    this.romDumpRom(3, 0);
+    this.romDumpRom(3, 7);
     this.romdmp.flush(); // Writes the remaining data to the file
     this.romdmp.close(); // Finishes the file
   }
@@ -134,6 +148,37 @@ class Memory {
   // returns the addr offset in the current bank (0x0000 to 0x3FFF) 
   int addr2offbank (int a) {
     return (a % 0x4000);
+  }
+
+/*
+ ;This register exists only in CPCs with 128K RAM (like the CPC 6128, 
+ ;or CPCs with Standard Memory Expansions). 
+ ;Note: In the CPC 6128, the register is a separate PAL that assists 
+ ;the Gate Array chip.
+ ;The 3bit RAM Config value is used to access the total of 128K RAM 
+ ;(RAM Banks 0-7) that is built into the CPC 6128. Normally the register 
+ ;is set to 0, so that only the first 64K RAM are used (identical to the
+ ;CPC 464 and 664 models). The register can be used to select between the 
+ ;following eight predefined configurations only:
+    // conf : banks
+    // 0 : 0 1 2 3  ** DEFAULT; 464 Mode
+    // 1 : 0 1 2 7
+    // 2 : 4 5 6 7
+    // 3 : 0 3 2 7
+    // 4 : 0 4 2 3
+    // 5 : 0 5 2 3
+    // 6 : 0 6 2 3
+    // 7 : 0 7 2 3
+    // Note: CRTC only displays from primary RAM
+ // Memory range (64 kB blocks of RAM selected, divided in 4 sub-blocks of 16KB): 
+  // 0x0000 to 0x3FFF
+  // 0x4000 to 0x7FFF
+  // 0x8000 to 0xBFFF
+  // 0xC000 to 0xFFFF
+  // blocks 0 to 3 : within the primary selected RAM block
+  // blocks 4 to 7 : within the secondary selected RAM block
+  */
+  void selExtRAMConfig (int page, int s, int bank) {
   }
 
   void addr2zone (int a) {
@@ -203,28 +248,3 @@ class Memory {
     cpc.mem.poke(pc++, 0x00);
   }
 }
-
-/*
-;  
- ;Register 3 - RAM Banking
- ;
- ;This register exists only in CPCs with 128K RAM (like the CPC 6128, or CPCs with Standard Memory Expansions). Note: In the CPC 6128, the register is a separate PAL that assists the Gate Array chip.
- ;Bit   Value   Function
- ;7   1   Gate Array function 3
- ;6   1
- ;5   -   not used (or 64K bank for Standard Memory Expansions)
- ;4   -
- ;3   -
- ;2   x   RAM Config (0..7)
- ;1   x
- ;0   x
- ;
- ;
- ;The 3bit RAM Config value is used to access the total of 128K RAM (RAM Banks 0-7) that is built into the CPC 6128. Normally the register is set to 0, so that only the first 64K RAM are used (identical to the CPC 464 and 664 models). The register can be used to select between the following eight predefined configurations only:
- ;
- ; -Address-     0      1      2      3      4      5      6      7
- ; 0000-3FFF   RAM_0  RAM_0  RAM_4  RAM_0  RAM_0  RAM_0  RAM_0  RAM_0
- ; 4000-7FFF   RAM_1  RAM_1  RAM_5  RAM_3  RAM_4  RAM_5  RAM_6  RAM_7
- ; 8000-BFFF   RAM_2  RAM_2  RAM_6  RAM_2  RAM_2  RAM_2  RAM_2  RAM_2
- ; C000-FFFF   RAM_3  RAM_7  RAM_7  RAM_7  RAM_3  RAM_3  RAM_3  RAM_3
- */

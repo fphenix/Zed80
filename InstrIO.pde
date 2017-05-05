@@ -41,10 +41,12 @@ class InstrIO extends InstrWrap {
   void INAn (int n) {
     int val8 = this.getRegVal(this.reg.Apos);
     this.asmInstr = "IN A, (" + this.hex2(n) + ")";
-    int adr16 = (val8 << 8) + n;
-    this.pin.ADDR = adr16;
-    this.setRegVal(this.reg.Apos, this.pin.DATA);
+    int adr16 = (val8 << 8) + (n & 0xFF);
+    val8 = this.pin.pinReadIn(adr16);
+    this.setRegVal(this.reg.Apos, val8);
     this.setPMTRpCycles(2, 3, 11, 1, 1);
+    this.pin.WR_b = 1; // Write
+    this.pin.RD_b = 0; // READ active Low 
     this.comment = "Read Peripheral";
     this.comment += "; " + this.pin.IOselInfo(adr16);
   }
@@ -56,10 +58,8 @@ class InstrIO extends InstrWrap {
     if (r == 6) {
       this.asmInstr += " (a.k.a. 'IN (C)' )";
     }
-
     int adr16 = this.getReg16Val(this.reg.BCpos);
-    this.pin.ADDR = adr16;
-    int val8 = this.pin.DATA;
+    int val8 = this.pin.pinReadIn(adr16);
     this.setPMTRpCycles(2, 3, 12, 1, 0);
     this.comment = "Read from Peripheral, Warning! On CPC the select is in fact B=" + hex2( this.getRegVal(this.reg.Bpos));
     this.comment += ", the value on DATA is reg " + rName;
@@ -67,6 +67,8 @@ class InstrIO extends InstrWrap {
       this.setRegVal(r, val8);
       this.comment += ", value=" + hex2(val8);
     }
+    this.pin.WR_b = 1; // Write
+    this.pin.RD_b = 0; // READ active Low 
     this.comment += "; " + this.pin.IOselInfo(adr16);
 
     // Flag byte:
@@ -86,11 +88,12 @@ class InstrIO extends InstrWrap {
   void OUTnA (int n) {
     int val8 = this.getRegVal(this.reg.Apos);
     this.asmInstr = "OUT (" + this.hex2(n) + "), A";
-    int adr16 = (val8 << 8) + n;
-    this.pin.ADDR = adr16;
-    this.pin.DATA = val8;
+    int adr16 = (val8 << 8) + (n & 0xFF);
+    this.pin.pinWriteOut(adr16, val8);
+    this.pin.WR_b = 0; // Write Active Low
+    this.pin.RD_b = 1; // not read    
     this.setPMTRpCycles(2, 3, 11, 1, 1);
-    this.comment = "Write to Peripheral; CPC??? sel A, data A ???";
+    this.comment = "Write to Peripheral; Probably not used on CPC (???) because we can only select A, and write the data A ???";
     this.comment += "; " + this.pin.IOselInfo(adr16);
   }
 
@@ -100,11 +103,9 @@ class InstrIO extends InstrWrap {
     this.asmInstr = "OUT (C), " + rName;
     int val8 = (r == 6) ? 0 : this.getRegVal(r);
     int adr16 = this.getReg16Val(this.reg.BCpos);
-    if (adr16 == 0x7f8d) {
-    cpc.ga.mode = 1;
-    }
-    this.pin.ADDR = adr16;
-    this.pin.DATA = val8;
+    this.pin.pinWriteOut(adr16, val8);
+    this.pin.WR_b = 0; // Write Active Low
+    this.pin.RD_b = 1; // not read    
     this.setPMTRpCycles(2, 3, 12, 1, 1);
     this.comment = "Write to Peripheral, Warning! On CPC the select is in fact B=" + hex2( this.getRegVal(this.reg.Bpos));
     this.comment += ", the value on DATA is ";
@@ -114,5 +115,4 @@ class InstrIO extends InstrWrap {
     this.comment += "value=" + hex2(val8);
     this.comment += "; " + this.pin.IOselInfo(adr16);
   }
-
 }

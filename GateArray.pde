@@ -37,37 +37,6 @@ class GateArray {
 
   String instr;
 
-  // Hard access registers (access thru a LD BC, 0x7Fxx; OUT (C), C) with nn as follows:
-  // * bits [7:6] : command
-  // * bit   [5]  : No effect on real Gate array, i.e. Normal CPC
-  // * bits [4:0] : command parameter
-  // commands+b5 (b[7:5]):
-  // b'000 : PENR : select a color reg; if bit 4 = 1 then border, else pen n° on [3:0]
-  // b'001 : PENR-ghost
-  // b'010 : INKR : value for the selected color reg: [4:0] number of the color HARD color (see colorHardware2Firmware())
-  // b'011 : INKR-ghost
-  // b'100 : RMR: Control Interrupt Counter, ROM mapping, Video Mode:
-  //         b4 : I: '1' will reset the interrupt counter
-  //         b3 : UR: Enable (0), Disable (1) the upper ROM paging (bank 3), 
-  //              can select which upper ROM with the IO address 0xDF00: 
-  //                ld bc, 0xDF00, OUT (c), c for Upper-ROM 0 (BASIC), 
-  //                0xDF07 for  Upper-ROM7 (AMDOS)
-  //         b2 : LR: Enable (0), Disable (1) the lower ROM paging
-  //         b[1:0] : VM : Select the video Mode (0, 1, 2 or 3)
-  // b'101 : RMR-Ghost
-  // b'110 : CPC pLus only
-  // b'11? : (param on bits [5:0]) : MMR : Memory mapping (extended RAM expansion)
-  // Note on RMR[3:2] : When ROM is Enabled: All CPU read, read the ROM, All CPU write, write the RAM at the same address
-  // Ex : lb bc, 0x7F8D; OUT (c), c; => 1000_1101 => RMR, Upper and Lower ROMs disabled, VM=1
-  int PENRPos = 0;
-  int PENR;
-  int INKRPos = 2;
-  int INKR;
-  int RMRPos = 4;
-  int RMR;
-  int MMRPos = 7;
-  int MMR;
-
   /* == Constructors ========================================= */
   GateArray () {
     this.construct(true);
@@ -193,6 +162,18 @@ class GateArray {
     //println("Border ink " + col1, col2);
     this.border = col1;
     this.borderAlt = col2;
+  }
+
+  void setPENHard (int p, int colhard) {
+    //println("Pen " + p + " ink " + col1, col2);
+    this.pen[p] = this.colorHardware2Color(colhard);
+    this.penAlt[p] = this.colorHardware2Color(colhard);
+  }
+
+  void setBORDERHard (int colhard) {
+    //println("Border ink " + col1, col2);
+    this.border = this.colorHardware2Color(colhard);
+    this.borderAlt = this.colorHardware2Color(colhard);
   }
 
   void setFlash (int t1, int t2) {
@@ -399,22 +380,6 @@ class GateArray {
     int pixval;
     int pIdx = 0;
     // Regular screen
-    //pushMatrix();
-    //translate(this.xpad+this.offcol, this.ypad+this.offrow);
-    ////stroke(255);
-    //noStroke();
-    //rect(0, 0, this.nbcol*this.xscl, this.nbrow*this.yscl);
-
-    //// pixels
-    //noStroke();
-    //for (int row = 0; row < this.nbrow; row++) {
-    //  for (int col = 0; col < this.nbcol; col++) {
-    //    pixval = this.getPixValue(col, row);
-    //    fill(this.getPenColor(pixval));
-    //    rect(col*this.xscl, row*this.yscl, this.xscl, this.yscl);
-    //  }
-    //}
-    //popMatrix();
     for (int y = 0; y < this.nbrowfullscreen; y++) {
       for (int x = 0; x < this.nbcolfullscreen; x++) {
         pIdx = this.calcPixIndex(x, y);
@@ -567,10 +532,11 @@ class GateArray {
   // is not displayed on the screen and can be used for data/routine storage as long
   // as the screen is not cleared.
   // There are 200 lines;
-  // 80 bytes par line (representing 160, 320 and 640 pixels resp. for Mode 0, 1 and 2
-  // Mode 0, 1 and 2 have respectively 2, 4 and 8 pixels per byte
-  // Mode 0, 1 and 2 have respectively 4, 2 and 1 bit per pixel.
-  // Mode 0, 1 and 2 have respectively 16, 4, and 2 different colors (plus BORDER's).
+  // 80 bytes par line (representing 160, 320 and 640 (and 160) pixels resp.) for Mode 0, 1 and 2 (and 3)
+  // Note Mode 3 is not accessible via BASIC, but can be set in Hardware (using OUT on 0x7F)
+  // Mode 0, 1, 2 and 3 have respectively 2, 4, 8 and 2 (+2 unused) pixels per byte
+  // Mode 0, 1, 2 and 3 have respectively 4, 2, 1 and 2 bit per pixel.
+  // Mode 0, 1, 2 and 3 have respectively 16, 4, 2 and 4 different colors (plus BORDER's).
 
   // calculate a line start address (linenb should be in [0;199])
   int calcLineStartAddr (int linenb) {
@@ -621,6 +587,17 @@ class GateArray {
       newbyte += ((pixval >> 1) & 0x01) << (7 - pixnb);
       newbyte += ((pixval >> 0) & 0x01) << (3 - pixnb);
 
+      //Mode 3, 160x200, 4 colors, 1 byte = 2 pixels (+2 unused)
+      // bits7 and 3 = pixel0 [0:1] !!warning : reversed because it's from Mode 0 table!!
+      // bits6 and 2 = pixel1 [0:1] !!warning : reversed!!
+      // bits5 and 1 = unused
+      // bits4 and 0 = unused
+    } else if (this.mode == 3) {
+      newbyte = this.clearBit(newbyte, (7 - pixnb));
+      newbyte = this.clearBit(newbyte, (3 - pixnb));
+      newbyte += ((pixval >> 0) & 0x01) << (7 - pixnb);
+      newbyte += ((pixval >> 1) & 0x01) << (3 - pixnb);
+
       //Mode 0, 160x200, 16 colors, 1 byte = 2 pixels
       // bits7, 5, 3, 1 = pixel0 [bits 0,2,1,3] (!!)
       // bits6, 4, 2, 0 = pixel1 [bits 0,2,1,3] (!!)
@@ -656,6 +633,13 @@ class GateArray {
       pv  = ((byteval >> (7 - pixnb)) & 0x01) << 1;
       pv += ((byteval >> (3 - pixnb)) & 0x01) << 0;
 
+      //Mode 3, 160x200, 4 colors, 1 byte = 2 pixels (+2 (4 bits) unused)
+      // bits7 and 3 = pixel0 [0:1] // !! warning reversed, taken from Mode 0 table !!
+      // bits6 and 2 = pixel1 [0:1] // !! reversed !!
+    } else if (this.mode == 3) {
+      pv += ((byteval >> (3 - pixnb)) & 0x01) << 1;
+      pv += ((byteval >> (7 - pixnb)) & 0x01) << 0;
+
       //Mode 0, 160x200, 16 colors, 1 byte = 2 pixels
       // bits7, 5, 3, 1 = pixel0 [bits 0,2,1,3] (!!)
       // bits6, 4, 2, 0 = pixel1 [bits 0,2,1,3] (!!)
@@ -677,7 +661,7 @@ class GateArray {
       modulo = 8;
     } else if (this.mode == 1) {
       modulo = 4;
-    } else if (this.mode == 0) {
+    } else if ((this.mode == 0) || (this.mode == 3)) {
       modulo = 2;
     } else {
       modulo = 1;
@@ -692,7 +676,7 @@ class GateArray {
       modulo = 8;
     } else if (this.mode == 1) {
       modulo = 4;
-    } else if (this.mode == 0) {
+    } else if ((this.mode == 0) || (this.mode == 3)) {
       modulo = 2;
     } else {
       modulo = 1;
@@ -704,7 +688,7 @@ class GateArray {
     int clamped = pixval;
     if (this.mode == 2) {
       clamped &= 0x01;  // 1bpp
-    } else if (this.mode == 1) {
+    } else if ((this.mode == 1) && (this.mode == 3)) {
       clamped &= 0x03; // 2bpp
     } else if (this.mode == 0) {
       clamped &= 0x0F; // 4 bits per pix

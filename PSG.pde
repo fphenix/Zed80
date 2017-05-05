@@ -5,22 +5,20 @@
 // PPI 0xF7 : Contrôle
 // PPI 0xF6 : Selection PSG
 //
-// Pout le Port 0xF6:
-/*Bit   Description
+/* Pour le Port 0xF6:
+ Bit   Description
 7   BDIR (Bus DIRection, signal PSG, voir ci-dessous)
 6   BC1 (Bus Control 1, signal PSG, voir ci-dessous
 5   Data write (signal cassette)
 4   Moteur cassette (signal cassette, 1=marche / 0=arrêt)
-3   Sélection numéro de ligne clavier (voir PPI)
-2   Sélection numéro de ligne clavier (voir PPI)
-1   Sélection numéro de ligne clavier (voir PPI)
-0   Sélection numéro de ligne clavier (voir PPI) */
-// avec :
-/*Fonctions des bits 7 et 6 du port &F6xx   BDIR   BC1
-Validation (le PSG valide l'opération précédente)   0   0
-Read Data (le PSG envoie une valeur à lire sur &F4xx)   0   1
+3!0 Sélection numéro de ligne clavier (voir PPI)
+avec :
+Fonctions des bits 7 et 6 du port &F6xx                 BDIR   BC1
+Validation (le PSG valide l'opération précédente)         0   0
+Read Data (le PSG envoie une valeur à lire sur &F4xx)     0   1
 Write Data (le PSG récupère la valeur placée sur &F4xx)   1   0
-Select AY register (le PSG sélectionne le numéro de registre placé sur &F4xx)   1   1 
+Select AY register (le PSG sélectionne le numéro          1   1 
+           de registre placé sur &F4xx)
 */
 
 class PSG {
@@ -55,14 +53,6 @@ class PSG {
     regComment[15] = "KEYBOARD_B: Réservé pour Gestion du clavier via le port B du PSG; NON CABLE SUR CPC!!!";
   }
   
-  int readPPI(int reg) {
-    return 0;
-  }
-  
-  int writePPI(int reg, int val) {
-    return 0;
-  }
-  
   int calcFreqHz (int periode) {
       return floor(62500.0 / periode);
   }
@@ -91,6 +81,7 @@ class PSG {
   float calcNotePeriode(int note, int octave) {
      return floor(1.0 / this.calcNoteFreq(note, octave));
   }
+  
 }
 /* Exemple de protocle:
 OUT &F4xx,numéro de registre
