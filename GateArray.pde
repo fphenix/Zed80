@@ -37,11 +37,6 @@ class GateArray {
 
   String instr;
 
-  int[] regsN = new int[5];
-  int[] regsS = new int[4];
-  int[] regsP = new int[4];
-  int[] flagsArr = new int[8];
-
   // Hard access registers (access thru a LD BC, 0x7Fxx; OUT (C), C) with nn as follows:
   // * bits [7:6] : command
   // * bit   [5]  : No effect on real Gate array, i.e. Normal CPC
@@ -97,38 +92,9 @@ class GateArray {
     this.reg = this.z80.reg;
     this.mem = memref;
     this.fwv = fwvref;
-    this.initArrays();
   }
 
   /* == End of Constructors ======================================= */
-
-  void initArrays () {
-    int i = 0;
-    regsN[i++] = this.reg.BCpos;
-    regsN[i++] = this.reg.DEpos;
-    regsN[i++] = this.reg.HLpos;
-    regsN[i++] = this.reg.IRpos;
-    regsN[i++] = this.reg.AFpos;
-    i = 0;
-    regsS[i++] = this.reg.PCpos;
-    regsS[i++] = this.reg.SPpos;
-    regsS[i++] = this.reg.IXpos;
-    regsS[i++] = this.reg.IYpos;
-    i = 0;
-    regsP[i++] = this.reg.BCpos;
-    regsP[i++] = this.reg.DEpos;
-    regsP[i++] = this.reg.HLpos;
-    regsP[i++] = this.reg.AFpos;
-    i = 0;
-    flagsArr[i++] = this.reg.CFpos;
-    flagsArr[i++] = this.reg.NFpos;
-    flagsArr[i++] = this.reg.PVFpos;
-    flagsArr[i++] = this.reg.XFpos;
-    flagsArr[i++] = this.reg.HFpos;
-    flagsArr[i++] = this.reg.YFpos;
-    flagsArr[i++] = this.reg.ZFpos;
-    flagsArr[i++] = this.reg.SFpos;
-  }
 
   void initColor () {
     for (int i = 0; i < this.pen.length; i++) {
@@ -281,9 +247,11 @@ class GateArray {
     // Debug lines : 16b registers (BC, DE, HL, IR and AF)
     fill(255, 255, 0);
     this.debugLine++;
-    for (int i = 0; i < this.regsN.length; i++) {
-      text(this.reg.reg16Name[this.regsN[i]], (i*this.regxpad)+this.xpad, this.debugLine*this.regypad);
+    for (int i = 0; i <= this.reg.HLpos; i++) {
+      text(this.reg.reg16Name[i], (i*this.regxpad)+this.xpad, this.debugLine*this.regypad);
     }
+    text(this.reg.reg16Name[this.reg.IRpos], (3*this.regxpad)+this.xpad, this.debugLine*this.regypad);
+    text(this.reg.reg16Name[this.reg.AFpos], (4*this.regxpad)+this.xpad, this.debugLine*this.regypad);
     this.debugLine++;
     text(this.hex4(this.reg.reg16b[this.reg.BCpos]), (0*this.regxpad)+this.xpad, this.debugLine*this.regypad);
     text(this.hex4(this.reg.reg16b[this.reg.DEpos]), (1*this.regxpad)+this.xpad, this.debugLine*this.regypad);
@@ -295,12 +263,11 @@ class GateArray {
   void showDebugSpeRegs() {
     // Debug lines : PC, SP and IX, IY 16b registers
     this.debugLine++;
-    for (int i = 0; i < this.regsS.length; i++) {
-      if (i < 2) {
-        text(this.reg.speRegName[this.regsS[i]], (i*this.regxpad)+this.xpad, this.debugLine*this.regypad);
-      } else {
-        text(this.reg.reg16Name[this.regsS[i]], (i*this.regxpad)+this.xpad, this.debugLine*this.regypad);
-      }
+    for (int i = 0; i <= this.reg.SPpos; i++) { // PC and SP
+      text(this.reg.speRegName[i], (i*this.regxpad)+this.xpad, this.debugLine*this.regypad);
+    }
+    for (int i = this.reg.IXpos; i <= this.reg.IYpos; i++) { //IX and IY
+      text(this.reg.reg16Name[i], ((i - this.reg.IXpos + this.reg.SPpos + 1)*this.regxpad)+this.xpad, this.debugLine*this.regypad);
     }
     this.debugLine++;
     text(this.hex4(this.reg.specialReg[this.reg.PCpos]), (0*this.regxpad)+this.xpad, this.debugLine*this.regypad);
@@ -313,8 +280,8 @@ class GateArray {
     // Debug lines : Prime 16b registers
     fill(127, 127, 127);
     this.debugLine++;
-    for (int i = 0; i < this.regsP.length; i++) {
-      text(this.reg.reg16Name[this.regsP[i]] + "'", (i*this.regxpad)+this.xpad, this.debugLine*this.regypad);
+    for (int i = 0; i <= this.reg.AFpos; i++) {
+      text(this.reg.reg16Name[i] + "'", (i*this.regxpad)+this.xpad, this.debugLine*this.regypad);
     }
     this.debugLine++;
     text(this.hex4(this.reg.regPrime[this.reg.BCpos]), (0*this.regxpad)+this.xpad, this.debugLine*this.regypad);
@@ -327,12 +294,12 @@ class GateArray {
     // Debug lines : Flags
     fill(255, 255, 0);
     this.debugLine++;
-    for (int i = this.flagsArr.length - 1; i >= 0; i--) {
-      text(this.reg.flagsName[this.flagsArr[i]], (i*this.regxpad/2.0)+this.xpad, this.debugLine*this.regypad);
+    for (int i = this.reg.SFpos; i >= this.reg.CFpos; i--) {
+      text(this.reg.flagsName[i], (i*this.regxpad/2.0)+this.xpad, this.debugLine*this.regypad);
     }
     this.debugLine++;
-    for (int i = this.flagsArr.length - 1; i >= 0; i--) {
-      text(this.reg.getFlagBit(i), ((this.flagsArr.length-1-i)*this.regxpad/2.0)+this.xpad, this.debugLine*this.regypad);
+    for (int i = this.reg.SFpos; i >= this.reg.CFpos; i--) {
+      text(this.reg.getFlagBit(i), ((this.reg.SFpos-i)*this.regxpad/2.0)+this.xpad, this.debugLine*this.regypad);
     }
   }
 
