@@ -90,7 +90,6 @@ public class InstrGPACC extends InstrIO {
           c = 1;
         }
       }
-      a = (preva + toadd) & 0xFF;
       if (this.isInRange(la, 0x0, 0x9)) {
         h = 0;
       } else {
@@ -122,7 +121,6 @@ public class InstrGPACC extends InstrIO {
           c = 1;
         }
       }
-      a = (preva - toadd) & 0xFF;  
       if  ((ch & 0x1) == 0x00) { // H=0
         h = 0;
       } else { // H=1
@@ -133,6 +131,7 @@ public class InstrGPACC extends InstrIO {
         }
       }
     }
+    a = (preva + this.twoComp2signed(toadd)) & 0xFF;  
 
     this.setRegVal(this.reg.Apos, a);
 
