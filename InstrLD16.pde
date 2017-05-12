@@ -43,7 +43,7 @@ class InstrLD16 extends InstrAL8 {
     default:
       this.reg.specialReg[this.reg.SPpos] = val16;
     }
-    this.comment = "Load 16b reg " + dName + " with value " + this.hex4(val16);
+    this.comment = "";
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -71,8 +71,7 @@ class InstrLD16 extends InstrAL8 {
     default:
       this.reg.specialReg[this.reg.SPpos] = val16;
     }
-    this.comment = "Load 16b reg " + dName + " with content of addr " + this.hex4(mem16);
-    this.comment += ", value " + this.hex4(val16);
+    this.comment = "Value " + this.hex4(val16);
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -90,8 +89,7 @@ class InstrLD16 extends InstrAL8 {
       val16 = this.getReg16Val(d);
     }
     this.put16InPointer(mem16, val16);
-    this.comment = "Load content of addr " + this.hex4(mem16) + ", with value ";
-    this.comment += this.hex4(val16) + ", in 16b reg " + dName;
+    this.comment = "Value " + this.hex4(val16);
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -104,7 +102,7 @@ class InstrLD16 extends InstrAL8 {
     this.setPMTRpCycles(3, 5, 16, 1, 2);
     this.setRegVal(this.reg.Hpos, high);
     this.setRegVal(this.reg.Lpos, low);
-    this.comment = "Load HL with content of addr " + this.hex4(mem16) + ", value " + this.hex4(val16);
+    this.comment = "";
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -114,7 +112,7 @@ class InstrLD16 extends InstrAL8 {
     this.setPMTRpCycles(3, 5, 16, 1, 2);
     int val16 = this.reg.reg16b[this.reg.HLpos];
     this.put16InPointer(mem16, val16);
-    this.comment = "Load content of addr " + this.hex4(mem16) + ", with value " + this.hex4(val16) + ", in HL";
+    this.comment = "";
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -124,7 +122,7 @@ class InstrLD16 extends InstrAL8 {
     this.asmInstr = "LD " + ixyName + ", " + this.hex4(val16);
     this.setPMTRpCycles(4, 4, 14, 2, 2);
     this.setReg16Val(this.reg.IXpos + ixy, val16);
-    this.comment = "Load " + ixyName + " with value " + this.hex4(val16);
+    this.comment = "";
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -135,8 +133,7 @@ class InstrLD16 extends InstrAL8 {
     this.asmInstr = "LD " + ixyName + ", " + this.hex4(val16);
     this.setPMTRpCycles(4, 4, 14, 2, 2);
     this.setReg16Val(this.reg.IXpos + ixy, val16);
-    this.comment = "Load " + ixyName + " with memory content (" + this.hex4(mem16);
-    this.comment += "), value " + this.hex4(val16);
+    this.comment = "Value " + this.hex4(val16);
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -147,9 +144,8 @@ class InstrLD16 extends InstrAL8 {
     this.asmInstr = "LD (" + this.hex4(val16) + "), " + ixyName;
     this.setPMTRpCycles(4, 6, 20, 2, 2);
     this.put16InPointer(mem16, val16);
-    this.comment = "Load " + ixyName + ", value " + this.hex4(val16);
-    this.comment += ") at memory address (" + this.hex4(mem16) + ")";
-  }
+    this.comment = "Value " + this.hex4(val16);
+   }
 
   // -----------------------------------------------------------------------------------------------------
   void LDSPHL () {
@@ -157,7 +153,7 @@ class InstrLD16 extends InstrAL8 {
     this.setPMTRpCycles(1, 1, 6, 1, 0);
     int val16 = this.getReg16Val(this.reg.HLpos);
     this.reg.specialReg[this.reg.SPpos] = val16;
-    this.comment = "Value in register HL (" + this.hex4(val16) + ") copied into register SP";
+    this.comment = "";
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -167,7 +163,7 @@ class InstrLD16 extends InstrAL8 {
     this.setPMTRpCycles(2, 2, 10, 2, 0);
     int val16 = this.getReg16Val(this.reg.IXpos + ixy);
     this.reg.specialReg[this.reg.SPpos] = val16;
-    this.comment = "Value in register " + ixyName + " (" + this.hex4(val16) + ") copied into register SP";
+    this.comment = "";
   }
 
 }

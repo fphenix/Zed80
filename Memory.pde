@@ -21,7 +21,7 @@ class Memory {
     this.lorom = new ROM("Lower", "Firmware.rom");
     this.uproms = new ROM[8];
     this.uproms[0] = new ROM("Upper0", "Basic.rom");
-    this.uproms[7] = new ROM("Upper7", "Amdos.rom");
+    this.uproms[7] = new ROM("Upper7", "Amsdos.rom");
     this.memdmp = null;
     this.lowerROMpaging = false;
     this.upperROMpaging = false;
@@ -74,10 +74,13 @@ class Memory {
   }
 
   void bootUpMem () {
-    for (int i = 0; i < 0x40; i++) {
-      // copy the RST table from AMDOS to RAM
+    this.lowerROMpaging = true;
+    this.upperROMpaging = true;
+    this.upperROMsel = 0;
+    /*for (int i = 0; i < 0x40; i++) {
+      // copy the RST table from AMSDOS to RAM
       this.poke(i, this.rompeek(3, 7, i));
-    }
+    }*/
   }
 
   void memDump () {
@@ -229,22 +232,39 @@ class Memory {
     }
   }
 
-  void testASM () {
-    int pc = 0;
-    cpc.mem.poke(pc++, 0x00);       // NOP
-    cpc.mem.poke(pc++, 0x21);
-    cpc.mem.poke(pc++, 0x00);
-    cpc.mem.poke(pc++, 0xC0);       // LD HL, 0xC000
-    cpc.mem.poke(pc++, 0x3E);
-    cpc.mem.poke(pc++, 0x55);       // LD A, 0x55
-    cpc.mem.poke(pc++, 0x06);
-    cpc.mem.poke(pc++, 0x44);       // LD B, 0x44
-    cpc.mem.poke(pc++, 0x04);       // INC B
-    cpc.mem.poke(pc++, 0x80);       // ADD A, B
-    cpc.mem.poke(pc++, 0x77);       // LD (HL), A
-    cpc.mem.poke(pc++, 0x23);       // INC HL
-    cpc.mem.poke(pc++, 0x18);
-    cpc.mem.poke(pc++, 250);        // JR -6
-    cpc.mem.poke(pc++, 0x00);
+  void loadRam (String jsonfile, String filename) {
+    JSONArray json;
+    JSONObject currfile;
+    boolean found = false;
+    json = loadJSONArray("./data/" + jsonfile);
+    for (int i = 0; i < json.size(); i++) {
+      currfile = json.getJSONObject(i);
+
+      String fname = currfile.getString("fname");
+
+      if (!filename.equals(fname)) {
+        continue;
+      }
+
+      found = true;
+      //int id = currfile.getInt("id");
+      int loadaddr = currfile.getInt("loadaddr");
+      //int len = currfile.getInt("length");
+      //int startaddr = currfile.getInt("startaddr");
+      //int filetype = currfile.getInt("filetype");
+      String data = currfile.getString("data");
+
+      this.pokeList(loadaddr, data);
+
+      log.logln("Done loading Test "  + fname + " @ 0x" + hex(loadaddr, 4 ) + " !");
+      break;
+    }
+    if (!found) {
+      println("File >" + filename + "< not found! while reading test file data");
+    }
+  }
+
+  void testASM (String testname) {
+    this.loadRam("testAsm.json", testname);
   }
 }

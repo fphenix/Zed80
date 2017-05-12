@@ -213,7 +213,7 @@ public class InstrGPACC extends InstrIO {
   void NOP () {
     this.asmInstr = "NOP";
     this.setPMTRpCycles(1, 1, 4, 1, 0);
-    this.comment = "No-Operation";
+    this.comment = "";
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -223,19 +223,8 @@ public class InstrGPACC extends InstrIO {
     int preva = this.getRegVal(this.reg.Apos);
     int a =  0x100 - preva;
     this.setRegVal(this.reg.Apos, a);
-    this.comment = "Negate A (change sign)";
-
-    // Flags : S Z y H x PV N C
-    int sf, zf, yf, hf, xf, pvf, nf, cf;
-    sf = this.rshiftMask(a, this.reg.SFpos, 0x01);
-    zf = this.isZero(a); 
-    yf = this.rshiftMask(a, this.reg.YFpos, 0x01);
-    hf = this.rshiftMask(a, this.reg.HFpos, 0x01);
-    xf = this.rshiftMask(a, this.reg.XFpos, 0x01);
-    pvf = this.oVerflow(preva, a, preva-a);
-    nf = 1;
-    cf = this.borrow(preva, a);
-    this.reg.setFlags(sf, zf, yf, hf, xf, pvf, nf, cf);
+    this.comment = "Negate A (change sign); A=" + hex2(a);
+    this.setFlagsSubType(a, preva, 0);
   }
 
   // -----------------------------------------------------------------------------------------------------

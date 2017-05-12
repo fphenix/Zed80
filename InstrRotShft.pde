@@ -95,49 +95,49 @@ class InstrRotShft extends InstrGPACC {
     switch (mode) {
     case 0 :  // RLC
       this.asmInstr = "RLC " + rName;
-      this.comment = "Rotate Left Circular of " + rName + " Set b7 to Carry";
+      this.comment = "Rotate Left Circular; Set b7 to Carry";
       c = ((preval8 & 0x80) >> 7); // Carry = prev-bit7
       val8 = ((preval8 << 1) & 0xFE) | c;
       break;
     case 1 :  // RRC
       this.asmInstr = "RRC " + rName;
-      this.comment = "Rotate Right Circular of " + rName + ", Set b0 to Carry";
+      this.comment = "Rotate Right Circular; Set b0 to Carry";
       c = (preval8 & 0x01);
       val8 = ((preval8 >> 1) & 0x7F) | (c << 7);
       break;
     case 2 : // RL
       this.asmInstr = "RL " + rName;
-      this.comment = "Rotate Left of " + rName + " and Carry";
+      this.comment = "Rotate Left and Carry";
       c = ((preval8 & 0x80) >> 7);
       val8 = ((preval8 << 1) & 0xFE) | prevc;
       break;
     case 3 : // RR
       this.asmInstr = "RR " + rName;
-      this.comment = "Rotate Right of " + rName + " and Carry";
+      this.comment = "Rotate Right and Carry";
       c = (preval8 & 0x01);
       val8 = ((preval8 >> 1) & 0x7F) | (prevc << 7);
       break;
     case 4 :  // SLA
       this.asmInstr = "SLA " + rName;
-      this.comment = "Shift Left Arithmetic of " + rName + ", b0 reset, Set b7 to Carry";
+      this.comment = "Shift Left Arithmetic; b0 reset, Set b7 to Carry";
       c = ((preval8 & 0x80) >> 7); // Carry = prev-bit7
       val8 = ((preval8 << 1) & 0xFE);
       break;
     case 5 :  // SRA
       this.asmInstr = "SRA " + rName;
-      this.comment = "Shift Right Circular of " + rName + ", bit7 unchanged, Set b0 to Carry";
+      this.comment = "Shift Right Circular; bit7 unchanged, Set b0 to Carry";
       c = (preval8 & 0x01);
       val8 = ((preval8 >> 1) & 0x7F) | (preval8 & 0x80);
       break;
     case 6 :  // SLL aka SL1
       this.asmInstr = "SLL/SL1 " + rName;
-      this.comment = "Shift Left with 1 of " + rName + ", b0 set, Set b7 to Carry";
+      this.comment = "Shift Left with 1; b0 set, Set b7 to Carry";
       c = ((preval8 & 0x80) >> 7); // Carry = prev-bit7
       val8 = ((preval8 << 1) & 0xFE) | 0x01;
       break;
     case 7 :  // SRL
       this.asmInstr = "SRL " + rName;
-      this.comment = "Shift Right Logical of " + rName + ", bit 7 reset, Set b0 to Carry";
+      this.comment = "Shift Right Logical; bit 7 reset, Set b0 to Carry";
       c = (preval8 & 0x01);
       val8 = ((preval8 >> 1) & 0x7F);
       break;
@@ -150,19 +150,8 @@ class InstrRotShft extends InstrGPACC {
     } else {
       this.setRegVal(r, val8);
     }
-    this.comment += "; value = " + hex2(val8) + "; Carry = " + c;
-
-    // Flag byte:
-    int sf, zf, yf, hf, xf, pvf, nf, cf;
-    sf = this.rshiftMask(val8, this.reg.SFpos, 0x01);
-    zf = this.isZero(val8); 
-    yf = this.rshiftMask(val8, this.reg.YFpos, 0x01);
-    hf = 0;
-    xf = this.rshiftMask(val8, this.reg.XFpos, 0x01);
-    pvf = this.parity(val8);
-    nf = 0;
-    cf = c;
-    this.reg.setFlags(sf, zf, yf, hf, xf, pvf, nf, cf);
+    this.comment += "; Value = " + hex2(val8) + "; Carry = " + c;
+    this.setFlagsRotType(val8, c);
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -191,18 +180,7 @@ class InstrRotShft extends InstrGPACC {
     }
     this.putInPointer(hl, val8);
     this.setRegVal(this.reg.Apos, a);
-
-    // Flag byte:
-    int sf, zf, yf, hf, xf, pvf, nf, cf;
-    sf = this.rshiftMask(a, this.reg.SFpos, 0x01);
-    zf = this.isZero(a); 
-    yf = this.rshiftMask(a, this.reg.YFpos, 0x01);
-    hf = 0;
-    xf = this.rshiftMask(a, this.reg.XFpos, 0x01);
-    pvf = this.parity(a);
-    nf = 0;
-    cf = this.reg.getCF();
-    this.reg.setFlags(sf, zf, yf, hf, xf, pvf, nf, cf);
+    this.setFlagsRotType(val8, this.reg.getCF());
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -223,49 +201,49 @@ class InstrRotShft extends InstrGPACC {
     switch (mode) {
     case 0 :  // RLC
       this.asmInstr = "RLC";
-      this.comment = "Rotate Left Circular of (" + ixyName + "), Set b7 to Carry";
+      this.comment = "Rotate Left Circular; Set b7 to Carry";
       c = ((preval8 & 0x80) >> 7); // Carry = prev-bit7
       val8 = ((preval8 << 1) & 0xFE) | c;
       break;
     case 1 :  // RRC
       this.asmInstr = "RRC";
-      this.comment = "Rotate Right Circular of (" + ixyName + "), Set b0 to Carry";
+      this.comment = "Rotate Right Circular; Set b0 to Carry";
       c = (preval8 & 0x01);
       val8 = ((preval8 >> 1) & 0x7F) | (c << 7);
       break;
     case 2 : // RL
       this.asmInstr = "RL";
-      this.comment = "Rotate Left of (" + ixyName + ") and Carry";
+      this.comment = "Rotate Left and Carry";
       c = ((preval8 & 0x80) >> 7);
       val8 = ((preval8 << 1) & 0xFE) | prevc;
       break;
     case 3 : // RR
       this.asmInstr = "RR";
-      this.comment = "Rotate Right of (" + ixyName + ") and Carry";
+      this.comment = "Rotate Right and Carry";
       c = (preval8 & 0x01);
       val8 = ((preval8 >> 1) & 0x7F) | (prevc << 7);
       break;
     case 4 :  // SLA
       this.asmInstr = "SLA";
-      this.comment = "Shift Left Arithmetic of (" + ixyName + "), b0 reset, Set b7 to Carry";
+      this.comment = "Shift Left Arithmetic; b0 reset, Set b7 to Carry";
       c = ((preval8 & 0x80) >> 7); // Carry = prev-bit7
       val8 = ((preval8 << 1) & 0xFE);
       break;
     case 5 :  // SRA
       this.asmInstr = "SRA";
-      this.comment = "Shift Right Circular of (" + ixyName + "), bit7 unchanged, Set b0 to Carry";
+      this.comment = "Shift Right Circular; bit7 unchanged, Set b0 to Carry";
       c = (preval8 & 0x01);
       val8 = ((preval8 >> 1) & 0x7F) | (preval8 & 0x80);
       break;
     case 6 :  // SLL aka SL1
       this.asmInstr = "SLL/SL1";
-      this.comment = "Shift Left with 1 of (" + ixyName + "), b0 set, Set b7 to Carry";
+      this.comment = "Shift Left with 1; b0 set, Set b7 to Carry";
       c = ((preval8 & 0x80) >> 7); // Carry = prev-bit7
       val8 = ((preval8 << 1) & 0xFE) | 0x01;
       break;
     case 7 :  // SRL
       this.asmInstr = "SRL";
-      this.comment = "Shift Right Logical of (" + ixyName + "), bit 7 reset, Set b0 to Carry";
+      this.comment = "Shift Right Logical; bit 7 reset, Set b0 to Carry";
       c = (preval8 & 0x01);
       val8 = ((preval8 >> 1) & 0x7F);
       break;
@@ -273,23 +251,12 @@ class InstrRotShft extends InstrGPACC {
       println("BUG!");
     }
     this.asmInstr += " (" + ixyName + ")";
-    this.comment += "; value = " + hex2(val8) + "; Carry = " + c;
+    this.comment += "; Value = " + hex2(val8) + "; Carry = " + c;
     this.putInPointer(mem16, val8);
     if (r != 6) {
       this.setRegVal(r, val8);
       this.asmInstr += ", " + rName;
     }
-
-    // Flag byte:
-    int sf, zf, yf, hf, xf, pvf, nf, cf;
-    sf = this.rshiftMask(val8, this.reg.SFpos, 0x01);
-    zf = this.isZero(val8); 
-    yf = this.rshiftMask(val8, this.reg.YFpos, 0x01);
-    hf = 0;
-    xf = this.rshiftMask(val8, this.reg.XFpos, 0x01);
-    pvf = this.parity(val8);
-    nf = 0;
-    cf = c;
-    this.reg.setFlags(sf, zf, yf, hf, xf, pvf, nf, cf);
+    this.setFlagsRotType(val8, c);
   }
 }

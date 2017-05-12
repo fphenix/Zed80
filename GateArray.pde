@@ -13,7 +13,6 @@ class GateArray {
   int cpcHeight;
 
   int borderColor = color(0, 32, 0);
-  int debugLine;
 
   float xscl, yscl;
   int lines, columns;
@@ -24,16 +23,14 @@ class GateArray {
   int borderxsize, borderysize;
   float xpad, ypad;
   final float mainscl = 2.0;
-  float xdebug;
-  boolean showDebug = true;
-  int regxpad = 55;
-  int regypad = 16;
 
   Z80 z80;       // reference
   Registers reg; // reference
   RAM ram;       // reference
   Memory mem;    // reference
   Firmware fwv;  // reference
+
+  DebugWindow dbg;
 
   String instr;
 
@@ -47,8 +44,8 @@ class GateArray {
   }
 
   void construct (boolean shwdbg) {
-    this.showDebug = shwdbg;
-    this.debugLine = 0;
+    this.dbg = new DebugWindow(shwdbg);
+    this.dbg.setRef(this);
 
     this.videoAddr = 0xC000;
     this.initColor();
@@ -104,7 +101,7 @@ class GateArray {
       this.columns = 40;
       break;
     }
-    this.xpad = floor((this.cpcWidth - (this.xdebug + (this.nbcolfullscreen * this.xscl))) / 3.0); 
+    this.xpad = floor((this.cpcWidth - (this.dbg.xdebug + (this.nbcolfullscreen * this.xscl))) / 3.0); 
     this.ypad = floor((this.cpcHeight - (this.nbrowfullscreen * this.yscl)) / 2.0);
     this.borderxsize = floor((this.nbcolfullscreen - this.nbcol) / 2.0);
     this.borderysize = floor((this.nbrowfullscreen - this.nbrow) / 2.0);
@@ -113,12 +110,12 @@ class GateArray {
   void init () {
     this.cpcHeight = height;
 
-    if (this.showDebug) {
+    if (this.dbg.showDebug) {
       this.cpcWidth = 1100;
-      this.xdebug = 300;
+      this.dbg.xdebug = 300;
     } else {
       this.cpcWidth = 790;
-      this.xdebug = 0;
+      this.dbg.xdebug = 0;
     }
     this.calcScreenSize();
     surface.setSize(this.cpcWidth, this.cpcHeight);
@@ -182,12 +179,12 @@ class GateArray {
   }
 
   void showDebugWindow () {
-    this.showDebug = true;
+    this.dbg.showDebug = true;
     this.init();
   }
 
   void hideDebugWindow () {
-    this.showDebug = false;
+    this.dbg.showDebug = false;
     this.init();
   }
 
@@ -219,146 +216,9 @@ class GateArray {
     scale(this.xscl, this.yscl);
     image(this.screen, 0, 0);
     popMatrix();
-    if (this.showDebug) {
-      this.showDebugScreen();
+    if (this.dbg.showDebug) {
+      this.dbg.showDebugScreen();
     }
-  }
-
-  void showDebugRegs() {
-    // Debug lines : 16b registers (BC, DE, HL, IR and AF)
-    fill(255, 255, 0);
-    this.debugLine++;
-    for (int i = 0; i <= this.reg.HLpos; i++) {
-      text(this.reg.reg16Name[i], (i*this.regxpad)+this.xpad, this.debugLine*this.regypad);
-    }
-    text(this.reg.reg16Name[this.reg.IRpos], (3*this.regxpad)+this.xpad, this.debugLine*this.regypad);
-    text(this.reg.reg16Name[this.reg.AFpos], (4*this.regxpad)+this.xpad, this.debugLine*this.regypad);
-    this.debugLine++;
-    text(this.hex4(this.reg.reg16b[this.reg.BCpos]), (0*this.regxpad)+this.xpad, this.debugLine*this.regypad);
-    text(this.hex4(this.reg.reg16b[this.reg.DEpos]), (1*this.regxpad)+this.xpad, this.debugLine*this.regypad);
-    text(this.hex4(this.reg.reg16b[this.reg.HLpos]), (2*this.regxpad)+this.xpad, this.debugLine*this.regypad);
-    text(this.hex4(this.reg.reg16b[this.reg.IRpos]), (3*this.regxpad)+this.xpad, this.debugLine*this.regypad);
-    text(this.hex4(this.reg.reg16b[this.reg.AFpos]), (4*this.regxpad)+this.xpad, this.debugLine*this.regypad);
-  }
-
-  void showDebugSpeRegs() {
-    // Debug lines : PC, SP and IX, IY 16b registers
-    this.debugLine++;
-    for (int i = 0; i <= this.reg.SPpos; i++) { // PC and SP
-      text(this.reg.speRegName[i], (i*this.regxpad)+this.xpad, this.debugLine*this.regypad);
-    }
-    for (int i = this.reg.IXpos; i <= this.reg.IYpos; i++) { //IX and IY
-      text(this.reg.reg16Name[i], ((i - this.reg.IXpos + this.reg.SPpos + 1)*this.regxpad)+this.xpad, this.debugLine*this.regypad);
-    }
-    this.debugLine++;
-    text(this.hex4(this.reg.specialReg[this.reg.PCpos]), (0*this.regxpad)+this.xpad, this.debugLine*this.regypad);
-    text(this.hex4(this.reg.specialReg[this.reg.SPpos]), (1*this.regxpad)+this.xpad, this.debugLine*this.regypad);
-    text(this.hex4(this.reg.reg16b[this.reg.IXpos]), (2*this.regxpad)+this.xpad, this.debugLine*this.regypad);
-    text(this.hex4(this.reg.reg16b[this.reg.IYpos]), (3*this.regxpad)+this.xpad, this.debugLine*this.regypad);
-  }
-
-  void showDebugPrimeRegs() {
-    // Debug lines : Prime 16b registers
-    fill(127, 127, 127);
-    this.debugLine++;
-    for (int i = 0; i <= this.reg.AFpos; i++) {
-      text(this.reg.reg16Name[i] + "'", (i*this.regxpad)+this.xpad, this.debugLine*this.regypad);
-    }
-    this.debugLine++;
-    text(this.hex4(this.reg.regPrime[this.reg.BCpos]), (0*this.regxpad)+this.xpad, this.debugLine*this.regypad);
-    text(this.hex4(this.reg.regPrime[this.reg.DEpos]), (1*this.regxpad)+this.xpad, this.debugLine*this.regypad);
-    text(this.hex4(this.reg.regPrime[this.reg.HLpos]), (2*this.regxpad)+this.xpad, this.debugLine*this.regypad);
-    text(this.hex4(this.reg.regPrime[this.reg.AFpos]), (3*this.regxpad)+this.xpad, this.debugLine*this.regypad);
-  }
-
-  void showDebugFlags() {
-    // Debug lines : Flags
-    fill(255, 255, 0);
-    this.debugLine++;
-    for (int i = this.reg.SFpos; i >= this.reg.CFpos; i--) {
-      text(this.reg.flagsName[i], (i*this.regxpad/2.0)+this.xpad, this.debugLine*this.regypad);
-    }
-    this.debugLine++;
-    for (int i = this.reg.SFpos; i >= this.reg.CFpos; i--) {
-      text(this.reg.getFlagBit(i), ((this.reg.SFpos-i)*this.regxpad/2.0)+this.xpad, this.debugLine*this.regypad);
-    }
-  }
-
-  void showDebugOpcode() {
-    // show current ASM opcode
-    this.debugLine++;
-    this.debugLine++;
-    text("Opcode : " + this.instr, this.xpad, this.debugLine*this.regypad);
-  }
-
-  void showDebugStack(int stackaddr) {
-    int memp;
-    int nblines = 4;
-    // Debug lines : Flags
-    fill(255, 255, 0);
-    this.debugLine++;
-    this.debugLine++;
-    text("Stack : ", this.xpad, this.debugLine*this.regypad);
-    this.debugLine++;
-    memp = stackaddr; //this.reg.specialReg[this.reg.SPpos];
-    for (int j = 0; j < nblines; j ++) {
-      text(this.hex4(memp), this.xpad, (this.debugLine+j)*this.regypad);
-      for (int i = 0; i < 8; i++) {
-        text(hex(this.mem.peek(memp), 2), ((i+3)*this.regxpad/2.2)+this.xpad, (this.debugLine+j)*this.regypad);
-        memp--;
-      }
-    }
-    this.debugLine += nblines;
-  }
-
-  void showDebugMem(int startmem) {
-    this.showDebugMem(startmem, 8, "Memory");
-  }
-
-  void showDebugMem(int startmem, int len, String title) {
-    int memp;
-    int nblines = len;
-    // Debug lines : Flags
-    fill(255, 255, 0);
-    this.debugLine++;
-    text(title + " : ", this.xpad, this.debugLine*this.regypad);
-    this.debugLine++;
-    memp = startmem;
-    for (int j = 0; j < nblines; j ++) {
-      text(this.hex4(memp), this.xpad, (this.debugLine+j)*this.regypad);
-      for (int i = 0; i < 8; i++) {
-        text(hex(this.mem.peek(memp), 2), ((i+3)*this.regxpad/2.2)+this.xpad, (this.debugLine+j)*this.regypad);
-        memp++;
-      }
-    }
-    this.debugLine += nblines;
-  }
-
-  void showDebugPCMem() {
-    int startmem = this.reg.specialReg[this.reg.PCpos] - 8;
-    text("=>", (this.regxpad)+this.xpad, (this.debugLine+3)*this.regypad);
-    this.showDebugMem(startmem, 4, "Mem @ PC");
-  }  
-
-  void showDebugScreen () {
-    //debug box
-    pushMatrix();
-    translate(this.cpcWidth-this.xdebug-this.xpad, this.ypad);
-    stroke(255, 255, 0);
-    fill(0, 0, 127);
-    rect(0, 0, this.xdebug, this.nbrowfullscreen*this.yscl);
-
-    this.debugLine = 0;
-    this.showDebugRegs();
-    this.showDebugSpeRegs();
-    this.showDebugPrimeRegs();
-    this.showDebugFlags();
-    this.showDebugOpcode();
-    this.showDebugStack(this.reg.getSP()-1);
-    this.showDebugMem(this.videoAddr);
-    this.showDebugPCMem();
-
-    popMatrix();
   }
 
   void showFullScreen () {
@@ -587,17 +447,6 @@ class GateArray {
       newbyte += ((pixval >> 1) & 0x01) << (7 - pixnb);
       newbyte += ((pixval >> 0) & 0x01) << (3 - pixnb);
 
-      //Mode 3, 160x200, 4 colors, 1 byte = 2 pixels (+2 unused)
-      // bits7 and 3 = pixel0 [0:1] !!warning : reversed because it's from Mode 0 table!!
-      // bits6 and 2 = pixel1 [0:1] !!warning : reversed!!
-      // bits5 and 1 = unused
-      // bits4 and 0 = unused
-    } else if (this.mode == 3) {
-      newbyte = this.clearBit(newbyte, (7 - pixnb));
-      newbyte = this.clearBit(newbyte, (3 - pixnb));
-      newbyte += ((pixval >> 0) & 0x01) << (7 - pixnb);
-      newbyte += ((pixval >> 1) & 0x01) << (3 - pixnb);
-
       //Mode 0, 160x200, 16 colors, 1 byte = 2 pixels
       // bits7, 5, 3, 1 = pixel0 [bits 0,2,1,3] (!!)
       // bits6, 4, 2, 0 = pixel1 [bits 0,2,1,3] (!!)
@@ -610,6 +459,17 @@ class GateArray {
       newbyte += ((pixval >> 2) & 0x01) << (5 - pixnb); // pixval[2] -> byte[5] for pix0 or byte [4] for pix1
       newbyte += ((pixval >> 1) & 0x01) << (3 - pixnb); // pixval[1] -> byte[3] for pix0 or byte [2] for pix1
       newbyte += ((pixval >> 0) & 0x01) << (7 - pixnb); // pixval[0] -> byte[7] for pix0 or byte [6] for pix1
+
+      //Mode 3, 160x200, 4 colors, 1 byte = 2 pixels (+2 unused)
+      // bits7 and 3 = pixel0 [0:1] !!warning : reversed because it's from Mode 0 table!!
+      // bits6 and 2 = pixel1 [0:1] !!warning : reversed!!
+      // bits5 and 1 = unused
+      // bits4 and 0 = unused
+    } else if (this.mode == 3) {
+      newbyte = this.clearBit(newbyte, (7 - pixnb));
+      newbyte = this.clearBit(newbyte, (3 - pixnb));
+      newbyte += ((pixval >> 0) & 0x01) << (7 - pixnb);
+      newbyte += ((pixval >> 1) & 0x01) << (3 - pixnb);
     } else {
       newbyte = 0;
     }
@@ -633,19 +493,19 @@ class GateArray {
       pv  = ((byteval >> (7 - pixnb)) & 0x01) << 1;
       pv += ((byteval >> (3 - pixnb)) & 0x01) << 0;
 
-      //Mode 3, 160x200, 4 colors, 1 byte = 2 pixels (+2 (4 bits) unused)
-      // bits7 and 3 = pixel0 [0:1] // !! warning reversed, taken from Mode 0 table !!
-      // bits6 and 2 = pixel1 [0:1] // !! reversed !!
-    } else if (this.mode == 3) {
-      pv += ((byteval >> (3 - pixnb)) & 0x01) << 1;
-      pv += ((byteval >> (7 - pixnb)) & 0x01) << 0;
-
       //Mode 0, 160x200, 16 colors, 1 byte = 2 pixels
       // bits7, 5, 3, 1 = pixel0 [bits 0,2,1,3] (!!)
       // bits6, 4, 2, 0 = pixel1 [bits 0,2,1,3] (!!)
     } else if (this.mode == 0) {
       pv  = ((byteval >> (1 - pixnb)) & 0x01) << 3;
       pv += ((byteval >> (5 - pixnb)) & 0x01) << 2;
+      pv += ((byteval >> (3 - pixnb)) & 0x01) << 1;
+      pv += ((byteval >> (7 - pixnb)) & 0x01) << 0;
+
+      //Mode 3, 160x200, 4 colors, 1 byte = 2 pixels (+2 (4 bits) unused)
+      // bits7 and 3 = pixel0 [0:1] // !! warning reversed, taken from Mode 0 table !!
+      // bits6 and 2 = pixel1 [0:1] // !! reversed !!
+    } else if (this.mode == 3) {
       pv += ((byteval >> (3 - pixnb)) & 0x01) << 1;
       pv += ((byteval >> (7 - pixnb)) & 0x01) << 0;
     } else {

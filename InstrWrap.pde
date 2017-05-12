@@ -36,29 +36,6 @@ class InstrWrap {
   Memory mem;
   Firmware fwv;
 
-  //public final int BregCode = 0b000;
-  //public final int CregCode = 0b001;
-  //public final int DregCode = 0b010;
-  //public final int EregCode = 0b011;
-  //public final int HregCode = 0b100;
-  //public final int LregCode = 0b101;
-  //public final int contentHLregCode = 0b110;
-  //public final int AregCode = 0b111;
-
-  //public final int IXhregCode = 0b100;
-  //public final int IXlregCode = 0b101;
-  //public final int IYhregCode = 0b100;
-  //public final int IYlregCode = 0b101;
-
-  //public final int BCregCode = 0b00; // D, Q
-  //public final int DEregCode = 0b01; // D, Q
-  //public final int HLregCode = 0b10; // D, Q
-  //public final int AFregCode = 0b11; // Q
-  //public final int SPregCode = 0b11; // D
-
-  // public final int IXregCode = 0b0;
-  // public final int IYregCode = 0b1;
-
   // ====================================================================
   void setOpcode(String s) {
     this.opcode = s;
@@ -125,6 +102,137 @@ class InstrWrap {
   // Flags calc and access methods
   // -----------------------------------------------------------------------------------
 
+  void setFlagsAddType(int val8, int operand1, int operand2) {
+    int sf, zf, yf, hf, xf, pvf, nf, cf;
+    sf = this.rshiftMask(val8, this.reg.SFpos, 0x01);
+    zf = this.isZero(val8); 
+    yf = this.rshiftMask(val8, this.reg.YFpos, 0x01);
+    hf = this.halfCarry(operand1, operand2);
+    xf = this.rshiftMask(val8, this.reg.XFpos, 0x01);
+    pvf = this.oVerflow(operand1+operand2);
+    nf = 0;
+    cf = this.carry(operand1, operand2);
+    this.reg.setFlags(sf, zf, yf, hf, xf, pvf, nf, cf);
+  }
+
+  void setFlagsIncType (int val8, int preval8) {
+    int sf, zf, yf, hf, xf, pvf, nf, cf;
+    sf = this.rshiftMask(val8, this.reg.SFpos, 0x01);
+    zf = this.isZero(val8); 
+    yf = this.rshiftMask(val8, this.reg.YFpos, 0x01);
+    hf = this.halfCarry(preval8, val8);
+    xf = this.rshiftMask(val8, this.reg.XFpos, 0x01);
+    pvf = (preval8 == 0x7F) ? 1 : 0;
+    nf = 0;
+    cf = this.reg.getCF();
+    this.reg.setFlags(sf, zf, yf, hf, xf, pvf, nf, cf);
+  }
+
+  void setFlagsSubType (int a, int preva, int val8) {
+    int sf, zf, yf, hf, xf, pvf, nf, cf;
+    sf = this.rshiftMask(a, this.reg.SFpos, 0x01);
+    zf = this.isZero(a); 
+    yf = this.rshiftMask(a, this.reg.YFpos, 0x01);
+    hf = this.halfBorrow(preva, val8);
+    xf = this.rshiftMask(a, this.reg.XFpos, 0x01);
+    pvf = this.oVerflow(preva-val8);
+    nf = 1;
+    cf = this.borrow(preva, val8);
+    this.reg.setFlags(sf, zf, yf, hf, xf, pvf, nf, cf);
+  }
+
+  void setFlagsDecType (int prev, int val8) {
+    int sf, zf, yf, hf, xf, pvf, nf, cf;
+    sf = this.rshiftMask(val8, this.reg.SFpos, 0x01);
+    zf = this.isZero(val8); 
+    yf = this.rshiftMask(val8, this.reg.YFpos, 0x01);
+    hf = this.halfBorrow(prev, val8);
+    xf = this.rshiftMask(val8, this.reg.XFpos, 0x01);
+    pvf = (prev == 0x80) ? 1 : 0;
+    nf = 1;
+    cf = this.reg.getCF();
+    this.reg.setFlags(sf, zf, yf, hf, xf, pvf, nf, cf);
+  }
+
+  void setFlagsAndType (int a, int preva, int val8) {
+    int sf, zf, yf, hf, xf, pvf, nf, cf;
+    sf = this.rshiftMask(a, this.reg.SFpos, 0x01);
+    zf = this.isZero(a); 
+    yf = this.rshiftMask(a, this.reg.YFpos, 0x01);
+    hf = 1;
+    xf = this.rshiftMask(a, this.reg.XFpos, 0x01);
+    pvf = this.oVerflow(preva+val8);
+    nf = 0;
+    cf = 0;
+    this.reg.setFlags(sf, zf, yf, hf, xf, pvf, nf, cf);
+  }
+
+  void setFlagsOrType (int a, int preva, int val8) {
+    int sf, zf, yf, hf, xf, pvf, nf, cf;
+    sf = this.rshiftMask(a, this.reg.SFpos, 0x01);
+    zf = this.isZero(a); 
+    yf = this.rshiftMask(a, this.reg.YFpos, 0x01);
+    hf = 0;
+    xf = this.rshiftMask(a, this.reg.XFpos, 0x01);
+    pvf = this.oVerflow(preva+val8);
+    nf = 0;
+    cf = 0;
+    this.reg.setFlags(sf, zf, yf, hf, xf, pvf, nf, cf);
+  }
+
+  void setFlagsXorType (int val8) {
+    int sf, zf, yf, hf, xf, pvf, nf, cf;
+    sf = this.rshiftMask(val8, this.reg.SFpos, 0x01);
+    zf = this.isZero(val8); 
+    yf = this.rshiftMask(val8, this.reg.YFpos, 0x01);
+    hf = 0;
+    xf = this.rshiftMask(val8, this.reg.XFpos, 0x01);
+    pvf = this.parity(val8);
+    nf = 0;
+    cf = 0;
+    this.reg.setFlags(sf, zf, yf, hf, xf, pvf, nf, cf);
+  }
+
+  void setFlagsCpType (int a, int compa, int val8) {
+    int sf, zf, yf, hf, xf, pvf, nf, cf;
+    sf = this.rshiftMask(compa, this.reg.SFpos, 0x01);
+    zf = this.isZero(compa); 
+    yf = this.rshiftMask(a, this.reg.YFpos, 0x01);
+    hf = this.halfBorrow(a, val8);
+    xf = this.rshiftMask(a, this.reg.XFpos, 0x01);
+    pvf = this.oVerflow(a-val8);
+    nf = 1;
+    cf = this.borrow(a, val8);
+    this.reg.setFlags(sf, zf, yf, hf, xf, pvf, nf, cf);
+  }
+
+  void setFlagsInType (int val8) {
+    int sf, zf, yf, hf, xf, pvf, nf, cf;
+    sf = this.rshiftMask(val8, this.reg.SFpos, 0x01);
+    zf = this.isZero(val8); 
+    yf = this.rshiftMask(val8, this.reg.YFpos, 0x01);
+    hf = 0;
+    xf = this.rshiftMask(val8, this.reg.XFpos, 0x01);
+    pvf = this.parity(val8);
+    nf = 0;
+    cf = this.reg.getCF();
+    this.reg.setFlags(sf, zf, yf, hf, xf, pvf, nf, cf);
+  }
+
+  void setFlagsRotType (int val8, int car) {
+    int sf, zf, yf, hf, xf, pvf, nf, cf;
+    sf = this.rshiftMask(val8, this.reg.SFpos, 0x01);
+    zf = this.isZero(val8); 
+    yf = this.rshiftMask(val8, this.reg.YFpos, 0x01);
+    hf = 0;
+    xf = this.rshiftMask(val8, this.reg.XFpos, 0x01);
+    pvf = this.parity(val8);
+    nf = 0;
+    cf = car;
+    this.reg.setFlags(sf, zf, yf, hf, xf, pvf, nf, cf);
+  }
+
+  //---------------------------------------------------------------------------------------------
   // 8bit 2's complement value to signed value
   int twoComp2signed (int twoscomp) {
     int jmp = twoscomp;
@@ -134,14 +242,20 @@ class InstrWrap {
     return jmp;
   }
 
-  int oVerflow (int a, int b, int val) {
-    if ((a & 0x80) == 0x80) {
-      a = -1 * (a & 0x7F);
+  int oVerflow (int val) {
+    int sign = ((val & 0x80) > 0) ? -1 : 1;
+    val = sign * (val & 0x7F);
+    if ((val < -128) || (val > 127)) {
+      return 1;
+    } else {
+      return 0;
     }
-    if ((b & 0x80) == 0x80) {
-      b = -1 * (b & 0x7F);
-    }
-    if ((val < -127) || (val > 128)) {
+  }
+
+  int oVerflow16 (int val) {
+    int sign = ((val & 0x8000) > 0) ? -1 : 1;
+    val = sign * (val & 0x7FFF);
+    if ((val < -32768) || (val > 32767)) {
       return 1;
     } else {
       return 0;
@@ -224,15 +338,13 @@ class InstrWrap {
   }
 
   void swapReg (int r1, int r2) {
-    int tswap;
-    tswap = this.getRegVal(r1);
+    int tswap = this.getRegVal(r1);
     this.setRegVal(r1, this.getRegVal(r2));
     this.setRegVal(r2, tswap);
   }
 
   void swapPrime (int r) {
-    int tswap;
-    tswap = this.reg.regPrime[r] & 0xFF;
+    int tswap = this.reg.regPrime[r] & 0xFF;
     this.reg.regPrime[r] = this.getRegVal(r);
     this.setRegVal(r, tswap);
   }

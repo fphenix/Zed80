@@ -27,7 +27,7 @@ class InstrExTxSrch extends InstrStack {
     this.setPMTRpCycles(1, 1, 4, 1, 0);
     this.swapReg(this.reg.Dpos, this.reg.Hpos);
     this.swapReg(this.reg.Epos, this.reg.Lpos);
-    this.comment = "Exchange the values in DE and HL registers";
+    this.comment = "";
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -41,7 +41,7 @@ class InstrExTxSrch extends InstrStack {
     this.mem.poke(memPointer + this.reg.MSB, this.getRegVal(this.reg.Hpos));
     this.setRegVal(this.reg.Hpos, valh);
     this.setRegVal(this.reg.Lpos, vall);
-    this.comment = "Exchange the values in (SP) and HL registers";
+    this.comment = "";
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -56,7 +56,7 @@ class InstrExTxSrch extends InstrStack {
     this.mem.poke(memPointer + 0, this.rshiftMask(r16, 0, 0xFF)); // LSB
     this.mem.poke(memPointer + 1, this.rshiftMask(r16, 8, 0xFF)); // MSB
     this.setReg16Val(this.reg.IXpos + ixy, (valh << 8) + vall);
-    this.comment = "Exchange the values in (SP) and " + ixyName + " registers";
+    this.comment = "";
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -65,7 +65,7 @@ class InstrExTxSrch extends InstrStack {
     this.setPMTRpCycles(1, 1, 4, 1, 0);
     this.swapPrime(this.reg.Apos);
     this.swapPrime(this.reg.Fpos);
-    this.comment = "Exchange the values in AF and AprimeFprime registers";
+    this.comment = "";
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -75,7 +75,7 @@ class InstrExTxSrch extends InstrStack {
     for (int i = this.reg.Bpos; i <= this.reg.Lpos; i++) {
       this.swapPrime(i);
     }
-    this.comment = "Exchange the values in B, C, D, E, H, L and their corresponding prime registers";
+    this.comment = "";
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -93,7 +93,7 @@ class InstrExTxSrch extends InstrStack {
     bc--;
     this.setReg16Val(this.reg.BCpos, bc);
     this.setPMTRpCycles(2, 4, 16, 1, 0);
-    this.comment = "Move value "+this.hex2(val8)+" from (HL) to (DE); then increment HL, DE and decrement BC";
+    this.comment = "";
 
     // Flags
     this.reg.resetFlagBit(this.reg.HFpos);
@@ -116,7 +116,7 @@ class InstrExTxSrch extends InstrStack {
     bc--;
     this.setReg16Val(this.reg.BCpos, bc);
     this.setPMTRpCycles(2, 4, 16, 1, 0);
-    this.comment = "Move value "+this.hex2(val8)+" from (HL) to (DE); then decrement HL, DE and BC";
+    this.comment = "Move value " + this.hex2(val8) + " from (HL) to (DE); then decrement HL, DE and BC";
 
     // Flags
     this.reg.resetFlagBit(this.reg.HFpos);
@@ -138,7 +138,7 @@ class InstrExTxSrch extends InstrStack {
     int bc = this.getReg16Val(this.reg.BCpos);
     bc--;
     this.setReg16Val(this.reg.BCpos, bc);
-    this.comment = "Repeat Move value "+this.hex2(val8)+" from (HL) to (DE); then increment HL, DE and decrement BC until BC = 0 ; BC="+bc;
+    this.comment = "Repeat Move value " + this.hex2(val8) + " from (HL) to (DE); then increment HL, DE and decrement BC until BC = 0 ; BC=" + bc;
     if (bc == 0) {
       this.setPMTRpCycles(2, 4, 16, 1, 0);
     } else {
@@ -255,7 +255,7 @@ class InstrExTxSrch extends InstrStack {
     this.reg.writeFlagBit(this.reg.HFpos, (compa & 0x10) >> 4);
     this.reg.setFlagBit(this.reg.NFpos);
     this.reg.writeFlagBit(this.reg.PVFpos, this.isNotZero16(bc));
-    this.comment += "; New Flags = " + this.reg.logFlagBits();
+    this.comment += "; New Flags = " + this.reg.printFlags();
   }
 
   // -----------------------------------------------------------------------------------------------------

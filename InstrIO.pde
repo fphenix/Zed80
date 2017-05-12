@@ -42,12 +42,13 @@ class InstrIO extends InstrWrap {
     int val8 = this.getRegVal(this.reg.Apos);
     this.asmInstr = "IN A, (" + this.hex2(n) + ")";
     int adr16 = (val8 << 8) + (n & 0xFF);
+    this.pin.WR_b = 1; // Write
+    this.pin.RD_b = 0; // READ active Low 
     val8 = this.pin.pinReadIn(adr16);
     this.setRegVal(this.reg.Apos, val8);
     this.setPMTRpCycles(2, 3, 11, 1, 1);
-    this.pin.WR_b = 1; // Write
-    this.pin.RD_b = 0; // READ active Low 
-    this.comment = "Read Peripheral";
+    this.comment = "Read Peripheral; Select = " + this.hex2(val8);
+    this.comment += ", DATA = " + this.hex2(n);
     this.comment += "; " + this.pin.IOselInfo(adr16);
   }
 
@@ -58,42 +59,33 @@ class InstrIO extends InstrWrap {
     if (r == 6) {
       this.asmInstr += " (a.k.a. 'IN (C)' )";
     }
-    int adr16 = this.getReg16Val(this.reg.BCpos);
-    int val8 = this.pin.pinReadIn(adr16);
-    this.setPMTRpCycles(2, 3, 12, 1, 0);
-    this.comment = "Read from Peripheral, Warning! On CPC the select is in fact B=" + hex2( this.getRegVal(this.reg.Bpos));
-    this.comment += ", the value on DATA is reg " + rName;
-    if (r != 6) {
-      this.setRegVal(r, val8);
-      this.comment += ", value=" + hex2(val8);
-    }
     this.pin.WR_b = 1; // Write
     this.pin.RD_b = 0; // READ active Low 
+    int adr16 = this.getReg16Val(this.reg.BCpos);
+    int val8 = this.pin.pinReadIn(adr16);
+    int b = this.getRegVal(this.reg.Bpos);
+    this.setPMTRpCycles(2, 3, 12, 1, 0);
+    if (r != 6) {
+      this.setRegVal(r, val8);
+    }
+    this.comment = "Read Peripheral. Select = " + hex2(b);
+    this.comment += ", DATA = " + hex2(val8);
     this.comment += "; " + this.pin.IOselInfo(adr16);
-
-    // Flag byte:
-    int sf, zf, yf, hf, xf, pvf, nf, cf;
-    sf = this.rshiftMask(val8, this.reg.SFpos, 0x01);
-    zf = this.isZero(val8); 
-    yf = this.rshiftMask(val8, this.reg.YFpos, 0x01);
-    hf = 0;
-    xf = this.rshiftMask(val8, this.reg.XFpos, 0x01);
-    pvf = this.parity(val8);
-    nf = 0;
-    cf = this.reg.getCF();
-    this.reg.setFlags(sf, zf, yf, hf, xf, pvf, nf, cf);
+    this.setFlagsInType (val8);
   }
 
   // -----------------------------------------------------------------------------------------------------
+  // Probably not used on CPC unless we need to write the same data than the select value.
   void OUTnA (int n) {
     int val8 = this.getRegVal(this.reg.Apos);
     this.asmInstr = "OUT (" + this.hex2(n) + "), A";
     int adr16 = (val8 << 8) + (n & 0xFF);
-    this.pin.pinWriteOut(adr16, val8);
     this.pin.WR_b = 0; // Write Active Low
     this.pin.RD_b = 1; // not read    
+    this.pin.pinWriteOut(adr16, val8);
     this.setPMTRpCycles(2, 3, 11, 1, 1);
-    this.comment = "Write to Peripheral; Probably not used on CPC (???) because we can only select A, and write the data A ???";
+    this.comment = "Write to Peripheral; Select = " + this.hex2(val8);
+    this.comment += ", DATA = " + this.hex2(n);
     this.comment += "; " + this.pin.IOselInfo(adr16);
   }
 
@@ -103,16 +95,70 @@ class InstrIO extends InstrWrap {
     this.asmInstr = "OUT (C), " + rName;
     int val8 = (r == 6) ? 0 : this.getRegVal(r);
     int adr16 = this.getReg16Val(this.reg.BCpos);
-    this.pin.pinWriteOut(adr16, val8);
     this.pin.WR_b = 0; // Write Active Low
     this.pin.RD_b = 1; // not read    
+    this.pin.pinWriteOut(adr16, val8);
     this.setPMTRpCycles(2, 3, 12, 1, 1);
-    this.comment = "Write to Peripheral, Warning! On CPC the select is in fact B=" + hex2( this.getRegVal(this.reg.Bpos));
-    this.comment += ", the value on DATA is ";
-    if (r != 6) {
-      this.comment += "reg " + rName + ", ";
-    }
-    this.comment += "value=" + hex2(val8);
+    int b = this.getRegVal(this.reg.Bpos);
+    this.comment = "Write to Peripheral, Select = " + hex2(b);
+    this.comment += ", DATA = " + hex2(val8);
     this.comment += "; " + this.pin.IOselInfo(adr16);
   }
+  
+  // -----------------------------------------------------------------------------------------------------
+  void INI () {
+    this.asmInstr = "INI";
+    this.setPMTRpCycles(2, 4, 16, 2, 0);
+    this.comment = "Not supported!";
+  } 
+  
+  // -----------------------------------------------------------------------------------------------------
+  void INIR () {
+    this.asmInstr = "INIR";
+    this.setPMTRpCycles(2, 5, 21, 2, 0);
+    this.comment = "Not supported!";
+  } 
+  
+  // -----------------------------------------------------------------------------------------------------
+  void IND () {
+    this.asmInstr = "IND";
+    this.setPMTRpCycles(2, 4, 16, 2, 0);
+    this.comment = "Not supported!";
+  } 
+  
+  // -----------------------------------------------------------------------------------------------------
+  void INDR () {
+    this.asmInstr = "INDR";
+    this.setPMTRpCycles(2, 5, 21, 2, 0);
+    this.comment = "Not supported!";
+  } 
+  
+  // -----------------------------------------------------------------------------------------------------
+  void OUTI () {
+    this.asmInstr = "OUTI";
+    this.setPMTRpCycles(2, 4, 16, 2, 0);
+    this.comment = "Not supported!";
+  } 
+  
+  // -----------------------------------------------------------------------------------------------------
+  void OTIR () {
+    this.asmInstr = "OTIR";
+    this.setPMTRpCycles(2, 5, 21, 2, 0);
+    this.comment = "Not supported!";
+  } 
+  
+  // -----------------------------------------------------------------------------------------------------
+  void OUTD () {
+    this.asmInstr = "OUTD";
+    this.setPMTRpCycles(2, 4, 16, 2, 0);
+    this.comment = "Not supported!";
+  } 
+  
+  // -----------------------------------------------------------------------------------------------------
+  void OTDR () {
+    this.asmInstr = "OTDR";
+    this.setPMTRpCycles(2, 5, 21, 2, 0);
+    this.comment = "Not supported!";
+  } 
+  
 }

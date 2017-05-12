@@ -73,8 +73,7 @@ public class InstrJmp extends InstrCall {
     } else {
       this.setPMTRpCycles(3, 3, 10, 1, 2);
     }
-    this.comment = "Conditional JUMP to address " + this.hex4(addr);
-    this.comment += " if " + cName + " true : cond=" + testresult;
+    this.comment = "Conditional JUMP; Condition = " + testresult;
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -90,7 +89,7 @@ public class InstrJmp extends InstrCall {
     } else {
       this.setPMTRpCycles(2, 2, 7, 1, 1);
     }
-    this.comment = "Conditional JUMP-Relative by " + jmp + " bytes" + " if " + cName + " true : cond=" + testresult;
+    this.comment = "Conditional JUMP-Relative by " + jmp + " bytes" + "; Condition = " + testresult;
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -101,7 +100,7 @@ public class InstrJmp extends InstrCall {
     this.asmInstr = "JP (" + ixyName + ")";
     this.setPMTRpCycles(-2, 2, 8, 2, 0);
     this.reg.specialReg[this.reg.PCpos] = addr;
-    this.comment = "JUMP to the address " + this.hex4(addr) + " pointed by " + ixyName;
+    this.comment = "JUMP to the address " + this.hex4(addr);
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -111,6 +110,6 @@ public class InstrJmp extends InstrCall {
     this.asmInstr = "JP (" + dName + ")";
     this.setPMTRpCycles(-1, 1, 4, 1, 0);
     this.reg.specialReg[this.reg.PCpos] = addr;
-    this.comment = "JUMP to the address " + this.hex4(addr) + " pointed by " + dName;
+    this.comment = "JUMP to the address " + this.hex4(addr);
   }
 }

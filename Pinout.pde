@@ -27,6 +27,8 @@ class Pinout {
   boolean selPPI = false;
   boolean selXPP = false;
 
+  String selRegInfo = "";
+
   // References
   Memory mem;
   GateArray ga;
@@ -88,6 +90,7 @@ class Pinout {
     switch (cmd) {
     case 0: //PENR
       this.currpen = (this.DATA & 0x1F);
+      this.selRegInfo = "GA reg : PENR";
       break;
     case 1: // INKR
       this.currink = (this.DATA & 0x1F);
@@ -96,22 +99,30 @@ class Pinout {
       } else {
         this.ga.setBORDERHard(this.currink);
       }
+      this.selRegInfo = "GA reg : INKR";
       break;
     case 2: // RMR
+      this.selRegInfo = "GA reg : RMR";
       if ((this.DATA & 0x10) == 0x10) { // RMR bit4
-        println("GA RMR I register not yet uspported");
+        println("GA RMR I register not yet supported");
       }
       if ((this.DATA & 0x08) == 0x00) { // RMR bit 3 = UpperROM paging enable (active low)
         this.mem.upperROMpaging = true;
+        this.selRegInfo += ": UpperROM paging enabled";
       } else {
         this.mem.upperROMpaging = false;
+        this.selRegInfo += ": UpperROM paging disabled";
       }
       if ((this.DATA & 0x04) == 0x00) { // RMR bit 2 = LowerROM paging enable (active low)
         this.mem.lowerROMpaging = true;
+        this.selRegInfo += ": LowerROM paging enabled";
       } else {
         this.mem.lowerROMpaging = false;
+        this.selRegInfo += ": LowerROM paging disabled";
       }
-      this.ga.setMode(this.DATA & 0x03); // RMR bits [1:0] = Video Mode
+      int vm = this.DATA & 0x03;
+      this.ga.setMode(vm); // RMR bits [1:0] = Video Mode
+      this.selRegInfo += ": Video Mode=" + vm;
       break;
     default: // RAM/MMR 6128 Only (or extended RAM expansion)
       int page = (this.DATA & 0x38) >> 3;
@@ -129,12 +140,14 @@ class Pinout {
     int sel = (this.ADDR & 0x0300) >> 8;
     switch (sel) {
     case 0: // 0xBCxx : W-only Select Reg
+      this.selRegInfo = "CRTC Select reg";
       if (this.WR_b == 0) { // Write
         this.currCRTCreg = this.DATA;
         this.currCRTCreg = (this.currCRTCreg < 0) ? 0 : (this.currCRTCreg > 31) ? 31 : this.currCRTCreg; // clamp to 0...31
       }
       break;
     case 1: // 0xBDxx : W-only Data Reg
+      this.selRegInfo = "CRTC Data reg";
       if (this.WR_b == 0) { // Write
         if (this.currCRTCreg <= 15) {
           this.CRTCreg[this.currCRTCreg] = this.DATA;
@@ -142,11 +155,13 @@ class Pinout {
       }
       break;
     case 2: // 0xBExx : Depends on the CRTC version; R-only ; nothing on Type 0 and 2; Status on Type 1
+      this.selRegInfo = "CRTC Stat or Unused reg";
       if (this.RD_b == 0) { // Read
         this.DATA = this.CRTCStatusreg;
       }
       break;
     default : // 0xBFxx : Depends on the CRTC version; R-only, read reg
+      this.selRegInfo = "CRTC Stat or Unused reg 2";
       if (this.RD_b == 0) { // Read
         if (this.currCRTCreg <= 17) {
           this.DATA = this.CRTCreg[this.currCRTCreg];
@@ -162,9 +177,26 @@ class Pinout {
   // ********************************************************************************************************
 
   void accessROMSel() {
+    this.selRegInfo = "Upper ROM Sel reg";
     if (this.WR_b == 0) { // Write
       this.mem.upperROMsel = this.DATA;
     }
+  }
+
+  // ********************************************************************************************************
+  // **             Printer
+  // ********************************************************************************************************
+
+  void accessPRNTSel() {
+    this.selRegInfo = "Printer Port";
+  }
+
+  // ********************************************************************************************************
+  // **             Expansion Peripherals
+  // ********************************************************************************************************
+
+  void accessXPPSel() {
+    this.selRegInfo = "Expansion Peripherals";
   }
 
   // ********************************************************************************************************
@@ -180,6 +212,7 @@ class Pinout {
     int sel = (this.ADDR & 0x0300) >> 8 ;
     switch (sel) {
     case 0: // 0xF4, Port A Data (PSG, Keyboard/Joystick), RW
+    this.selRegInfo = "PPI Port A Data";
       if (this.WR_b == 0) { // Write
         this.currPortAdata = this.DATA;
       } else {
@@ -187,6 +220,7 @@ class Pinout {
       }
       break;
     case 1: // 0xF5, VSYNC, etc, RW
+    this.selRegInfo = "PPI VSYNC, etc";
       // b7: CAS_IN
       // b6: PRN.BUSY
       // b5: /EXP
@@ -199,6 +233,7 @@ class Pinout {
       }
       break;
     case 2: // 0xF6, PSG, Cassette, Keyboard, RW
+    this.selRegInfo = "PPI PSG, Cassette, Keyboard";
       if (this.RD_b == 0) { // Read
         this.DATA = this.currPortCdata;
       } else { // Write
@@ -206,6 +241,7 @@ class Pinout {
       }
       break;
     default:  // 0xF7, PPI Control W-Only
+    this.selRegInfo = "PPI Control";
       if (this.RD_b == 0) { // Read?
         return;
       }
@@ -239,8 +275,6 @@ class Pinout {
     }
   }
 
-
-
   int currPSGopWrite; // 1=W, 0=R
   int currPSGopReg; // 
   int currPSGopVal; // 
@@ -248,8 +282,6 @@ class Pinout {
   //int tapeWrite;
   //int tapeMotorOn;
   int keyboardLine = 0;
-
-
 
   void accessPSG() {
     // 0xF6xx Write :
@@ -262,6 +294,7 @@ class Pinout {
     // b4 : Cassette Motor Control
     // b3:0 : Select keyboard line to be scanned
     int sel = (this.DATA & 0xC0) >> 6;
+    this.selRegInfo = "PSG, Sel="+sel;
     switch (sel) {
     case 0 :
       if (this.currPSGopReady) {
@@ -361,7 +394,7 @@ class Pinout {
    xxxxx0xx xx0xxxxx {0xF8 0xFB}   rw  {Expansion Peripherals: Serial Port}
    --------------------------------------------------------------------------- */
   String IOselInfo (int adr) {
-    String str = "";
+    String str = this.selRegInfo; // "";
     if ((adr & 0x8000) == 0x0000) {
       str += " | Gate Array; W-only; 0x7Fxx";
     }
@@ -456,6 +489,7 @@ class Pinout {
   }
 
   void accessIO () {
+    this.selRegInfo = "";
     if ((this.selGA) || (this.selRAM)) {
       this.accessGA();
     }
@@ -466,14 +500,17 @@ class Pinout {
       this.accessCRTCSel();
     }
     if (this.selPRNT) {
+      this.accessPRNTSel();
       // not supported
     }
     if (this.selPPI) {
       this.accessPPISel();
     }
     if (this.selXPP) {
+      this.accessXPPSel();
       // not supported
     }
+    //log.logln(this.selRegInfo);
   }
 
   void pinWriteOut (int paddr, int pdata) {

@@ -27,7 +27,7 @@ class InstrBSRT extends InstrRotShft {
       this.setPMTRpCycles(2, 2, 8, 2, 0);
     }
     int z = (((val8 >> b) & 0x01) == 0) ? 1 : 0; // si bit=0, Z=1 sinon Z=0
-    this.comment = "Test Bit n°"+b+" in register " + rName + " and set Z to " + z;
+    this.comment = "";
 
     //Flags:
     this.reg.writeFlagBit(this.reg.ZFpos, z);
@@ -55,7 +55,7 @@ class InstrBSRT extends InstrRotShft {
     } else {
       this.setRegVal(r, val8);
     }
-    this.comment = "Set Bit n°"+b+" in register " + rName;
+    this.comment = "value = " + hex2(val8);
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -78,7 +78,7 @@ class InstrBSRT extends InstrRotShft {
     } else {
       this.setRegVal(r, val8);
     }
-    this.comment = "Reset Bit n°"+b+" in register " + rName;
+    this.comment = "value = " + hex2(val8);
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -92,7 +92,7 @@ class InstrBSRT extends InstrRotShft {
     this.asmInstr = "BIT " + b + ", (" + ixyName + ")";
     this.setPMTRpCycles(4, 5, 20, 2, 2);
     int z = (((val8 >> b) & 0x01) == 0) ? 1 : 0; // si bit=0, Z=1 sinon Z=0
-    this.comment = "Test Bit n°"+b+" in (" + ixyName + ") and set Z to " + z;
+    this.comment = "";
 
     //Flags:
     this.reg.writeFlagBit(this.reg.ZFpos, z);
@@ -116,7 +116,7 @@ class InstrBSRT extends InstrRotShft {
       this.setRegVal(r, val8);
       this.asmInstr += ", " + rName;
     }
-    this.comment = "Set Bit n°"+b+" in register " + ixyName;
+    this.comment = "value = " + hex2(val8);
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -135,6 +135,6 @@ class InstrBSRT extends InstrRotShft {
       this.setRegVal(r, val8);
       this.asmInstr += ", " + rName;
     }
-    this.comment = "Reset Bit n°"+b+" in register " + ixyName;
+    this.comment = "value = " + hex2(val8);
   }
 }

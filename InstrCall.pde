@@ -25,7 +25,7 @@ class InstrCall extends InstrBSRT {
       this.fwv.vectorTable(val16);
     }
     this.reg.setPC(val16);
-    this.comment = "CALL sub routine at " + this.hex4(val16);
+    this.comment = "";
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -34,7 +34,7 @@ class InstrCall extends InstrBSRT {
     this.setPMTRpCycles(-1, 4, 14, 1, 0);
     int pc = this.get16FromStack();
     this.reg.setPC(pc);
-    this.comment = "RETurn from sub routine, go back to " + this.hex4(pc);
+    this.comment = "RETurn to " + this.hex4(pc);
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -65,8 +65,7 @@ class InstrCall extends InstrBSRT {
     } else {
       this.setPMTRpCycles(3, 3, 10, 1, 2);
     }
-    this.comment = "Conditional-CALL sub routine at " + this.hex4(val16);
-    this.comment += " if " + cName + " is true : cond=" + testresult;
+    this.comment = "Condition = " + testresult;
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -74,17 +73,14 @@ class InstrCall extends InstrBSRT {
     boolean testresult = this.reg.testCondFlag(cond);
     String cName = this.reg.condName[cond];
     this.asmInstr = "RET " + cName;
-    int flags = this.reg.readFlagByte();
-    this.comment = "Conditional-RETurn from sub routine, Flags=" + this.hex2(flags) + ", ";
     if (testresult) {
       this.setPMTRpCycles(-1, 3, 11, 1, 0);
       int pc = this.get16FromStack();
       this.reg.setPC(pc);
-      this.comment += "go back to " + this.hex4(pc) + " if " + cName + " is true : cond=" + testresult;
     } else {
       this.setPMTRpCycles(1, 1, 5, 1, 0);
-      this.comment = "FALSE: condition " + cName + " is not met";
     }
+    this.comment = "Condition = " + testresult;
   }
   
     // -----------------------------------------------------------------------------------------------------

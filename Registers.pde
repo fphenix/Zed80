@@ -4,7 +4,6 @@ class Registers {
   public final int regLen = 11;
   public final int regPrimeLen = 9;
   public final int reg16bLen = 7;
-  public final int reg16bPrimeLen = 4;
   public final int speRegLen = 2;
   public final int FlagsLen = 8;
 
@@ -14,8 +13,10 @@ class Registers {
   public final int Dpos = 2;
   public final int Epos = 3;
   public final int Hpos = 4;
+  public final int IXYhpos = 4;
   public final int Lpos = 5;
-  public final int contHLpos = 6; // placeHolder
+  public final int IXYlpos = 5;
+  public final int contHLpos = 6;
   public final int Apos = 7;  
   public final int Fpos = 8;
   public final int Ipos = 9;
@@ -41,7 +42,7 @@ class Registers {
   public final int YFpos = 5; // bit 5 of Flag Reg. ; Undocumented/Unused; copy of bit 5 of the result
   public final int HFpos = 4; // bit 4 of Flag Reg. ; Half-Carry of an addition/substraction (from bit 3 to 4); Used for BCD correction with DAA
   public final int XFpos = 3; // bit 3 of Flag Reg. ; Undocumented/Unused; copy of bit 3 of the result
-  public final int PVFpos = 2; // bit 2 of Flag Reg. ; Parity of the result (logical); can also be VF (arithmetics), 2-complement signed overflow from range [-127:128]).
+  public final int PVFpos = 2; // bit 2 of Flag Reg. ; Parity of the result (logical); can also be VF (arithmetics), 2-complement signed  from range [-127:128]).
   public final int NFpos = 1; // bit 1 of Flag Reg. ; Set to 0 if last operation was an addition or to 1 for a substraction; used for DAA
   public final int CFpos = 0; // bit 0 of Flag Reg. ; Carry Flag, set if there was a carry after the Most-Significant-Bit
 
@@ -62,7 +63,6 @@ class Registers {
   int[] regPrime = new int[this.regPrimeLen]; // Bprime, Cprime, Dprime, Eprime, Hprime, Lprime, __, Aprime, Fprime;
   int[] specialReg = new int[this.speRegLen]; // PC (Program counter), SP (Stack Pointer, Special Purpose Registers);
   int[] reg16b = new int[this.reg16bLen]; // BC, DE, HL, AF, IR, IX, IY
-  int[] reg16bprime = new int[this.reg16bPrimeLen]; // BCp, DEp, HLp, AFp
   //int[] flags = new int[this.FlagsLen]; // S, Z, Y, H, X, P/V, N, C
 
   int IFF1, IFF2; // Interrupts
@@ -108,6 +108,14 @@ class Registers {
     this.writeFlagBit(this.ZFpos, z);
   }
 
+  void writeSF (int s) {
+    this.writeFlagBit(this.SFpos, s);
+  }
+
+  void writePVF (int pv) {
+    this.writeFlagBit(this.PVFpos, pv);
+  }
+
   void writeHF (int h) {
     this.writeFlagBit(this.HFpos, h);
   }
@@ -136,6 +144,20 @@ class Registers {
 
   int readFlagByte () {
     return this.reg8b[this.Fpos];
+  }
+  
+  //  Flags: SZ-H-PNC
+  String printFlags () {
+    String str = "";
+    int tmpflags = this.reg8b[this.Fpos];
+    for (int i = this.SFpos; i >= this.CFpos; i--) {
+      if ((i == this.YFpos) || (i == this.XFpos)) {
+        str += "-";
+      } else {
+        str += (tmpflags >> i) & 0x01;
+      }
+    }
+    return str;
   }
 
   // =============================================================
@@ -196,41 +218,20 @@ class Registers {
     this.reg16b[this.DEpos] = (this.reg8b[this.Dpos] << 8) + this.reg8b[this.Epos];
     this.reg16b[this.HLpos] = (this.reg8b[this.Hpos] << 8) + this.reg8b[this.Lpos];
     this.reg16b[this.IRpos] = (this.reg8b[this.Ipos] << 8) + this.reg8b[this.Rpos];
-    this.reg16bprime[this.AFpos] = (this.regPrime[this.Apos] << 8) + this.regPrime[this.Fpos];
-    this.reg16bprime[this.BCpos] = (this.regPrime[this.Bpos] << 8) + this.regPrime[this.Cpos];
-    this.reg16bprime[this.DEpos] = (this.regPrime[this.Dpos] << 8) + this.regPrime[this.Epos];
-    this.reg16bprime[this.HLpos] = (this.regPrime[this.Hpos] << 8) + this.regPrime[this.Lpos];
   }
 
-  // =============================================================
-  String getRegStatTitle () {
-    return "PC   SP   A F  B C  D E  H L  I R  IX   IY   ApFp BpCp DpEp HpLp";
-  }
-
-  String logFlagBits() {
-    String flagstr = "b";
-    for (int i = 7; i >= 0; i--) {
-      flagstr += (this.reg8b[this.Fpos] >> i) & 0x01;
+  String printRegs () {
+    this.update();
+    String str = "";
+    for (int i = this.PCpos; i <= this.SPpos; i++) {
+        str += hex(this.specialReg[i], 4) + "|";
+      
     }
-    return flagstr;
+    for (int i = this.BCpos; i <= this.IYpos; i++) {
+        str += hex(this.reg16b[i], 4) + "|";
+      
+    }
+    return str;
   }
 
-  String getRegStat () {
-    String t = "";
-    t += hex(this.specialReg[this.PCpos], 4) + " ";
-    t += hex(this.specialReg[this.SPpos], 4) + " ";
-    t += hex(this.reg16b[this.AFpos], 4) + " ";
-    t += hex(this.reg16b[this.BCpos], 4) + " ";
-    t += hex(this.reg16b[this.DEpos], 4) + " ";
-    t += hex(this.reg16b[this.HLpos], 4) + " ";
-    t += hex(this.reg16b[this.IRpos], 4) + " ";
-    t += hex(this.reg16b[this.IXpos], 4) + " ";
-    t += hex(this.reg16b[this.IYpos], 4) + " ";
-    t += hex(this.reg16bprime[this.AFpos], 4) + " ";
-    t += hex(this.reg16bprime[this.BCpos], 4) + " ";
-    t += hex(this.reg16bprime[this.DEpos], 4) + " ";
-    t += hex(this.reg16bprime[this.HLpos], 4);
-    return t;
-  }
-  
 }

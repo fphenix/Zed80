@@ -78,35 +78,64 @@ class InstrAL8 extends InstrAL16 {
   // -----------------------------------------------------------------------------------------------------
   void ADDAr (int r) {
     int val8;
-    int a, preva;
     String rName = this.regNameRS(r);
     this.asmInstr = "ADD A, " + rName;
     if (r == this.reg.contHLpos) {
       this.setPMTRpCycles(1, 2, 7, 1, 0);
       int hl = this.getReg16Val(this.reg.HLpos);
       val8 = this.getFromPointer(hl);
-      this.comment = "Add memory address pointed by " + rName + " (" + this.hex4(hl) + ": ";
     } else {
       this.setPMTRpCycles(1, 1, 4, 1, 0);
       val8 = this.getRegVal(r);
-      this.comment = "Add register " + rName + " content (";
     }
-    preva = this.getRegVal(this.reg.Apos);
-    this.setRegVal(this.reg.Apos, preva + val8);
-    a = this.getRegVal(this.reg.Apos);
-    this.comment += this.hex2(val8) + ") to Accumulator, result = " + this.hex2(a) + "; Refresh Flags";
+    int preva = this.getRegVal(this.reg.Apos);
+    int a = (preva + val8) & 0xFF;
+    this.setRegVal(this.reg.Apos, a);
+    this.comment = "value = " + this.hex2(a);
+    this.setFlagsAddType(a, preva, val8);
+  }
 
-    // Flag byte:
-    int sf, zf, yf, hf, xf, pvf, nf, cf;
-    sf = this.rshiftMask(a, this.reg.SFpos, 0x01);
-    zf = this.isZero(a); 
-    yf = this.rshiftMask(a, this.reg.YFpos, 0x01);
-    hf = this.halfCarry(preva, val8);
-    xf = this.rshiftMask(a, this.reg.XFpos, 0x01);
-    pvf = this.oVerflow(preva, val8, preva+val8);
-    nf = 0;
-    cf = this.carry(preva, val8);
-    this.reg.setFlags(sf, zf, yf, hf, xf, pvf, nf, cf);
+  // -----------------------------------------------------------------------------------------------------
+  void ADDAp (int ixy, int horl) {
+    int val8;
+    String ixyName = this.reg.reg16Name[this.reg.IXpos + ixy];    
+    int val16 = this.getReg16Val(this.reg.IXpos + ixy);
+    if (horl == 0) { // IXh or IYh
+      val8 = (val16 & 0xFF00) >> 8;
+      ixyName += "h";
+    } else {
+      val8 = (val16 & 0x00FF) >> 0;
+      ixyName += "l";
+    }
+    int preva = this.getRegVal(this.reg.Apos);
+    this.asmInstr = "ADD A, " + ixyName;
+    this.setPMTRpCycles(2, 2, 8, 2, 0);
+    int a = (preva + val8) & 0xFF;
+    this.setRegVal(this.reg.Apos, a);
+    this.comment = "value = " + this.hex2(a);
+    this.setFlagsAddType(a, preva, val8);
+  }
+
+  // -----------------------------------------------------------------------------------------------------
+  void ADCAp (int ixy, int horl) {
+    int val8;
+    String ixyName = this.reg.reg16Name[this.reg.IXpos + ixy];    
+    int val16 = this.getReg16Val(this.reg.IXpos + ixy);
+    if (horl == 0) { // IXh or IYh
+      val8 = (val16 & 0xFF00) >> 8;
+      ixyName += "h";
+    } else {
+      val8 = (val16 & 0x00FF) >> 0;
+      ixyName += "l";
+    }
+    val8 += this.reg.getCF();
+    int preva = this.getRegVal(this.reg.Apos);
+    this.asmInstr = "ADC A, " + ixyName;
+    this.setPMTRpCycles(2, 2, 8, 2, 0);
+    int a = (preva + val8) & 0xFF;
+    this.setRegVal(this.reg.Apos, a);
+    this.comment = "value = " + this.hex2(a);
+    this.setFlagsAddType(a, preva, val8);
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -121,144 +150,99 @@ class InstrAL8 extends InstrAL16 {
       prev = this.getFromPointer(hl);
       val8 = prev + 1;
       this.putInRegPointer(this.reg.HLpos, val8);
-      this.comment = "Increments memory address pointed by " + rName + " (" + this.hex4(hl) + ": ";
     } else {
       this.setPMTRpCycles(1, 1, 4, 1, 0);
       prev = this.getRegVal(r);
       val8 = prev + 1;
       this.setRegVal(r, val8);
-      this.comment = "Increments register " + rName + " content (";
     }
-    this.comment += this.hex2(prev) + "), result = " + this.hex2(val8) + "; Refresh Flags";
-
-    // Flag byte:
-    int sf, zf, yf, hf, xf, pvf, nf, cf;
-    sf = this.rshiftMask(val8, this.reg.SFpos, 0x01);
-    zf = this.isZero(val8); 
-    yf = this.rshiftMask(val8, this.reg.YFpos, 0x01);
-    hf = this.halfCarry(prev, val8);
-    xf = this.rshiftMask(val8, this.reg.XFpos, 0x01);
-    pvf = (prev == 0x7F) ? 1 : 0;
-    nf = 0;
-    cf = this.reg.getCF();
-    this.reg.setFlags(sf, zf, yf, hf, xf, pvf, nf, cf);
+    this.comment = "value = " + this.hex2(val8);
+    this.setFlagsIncType(val8, prev);
   }
 
   // -----------------------------------------------------------------------------------------------------
   void ADCAr (int r) {
     int val8;
-    int a, preva;
     String rName = this.regNameRS(r);
     this.asmInstr = "ADC A, " + rName;
     if (r == this.reg.contHLpos) {
       this.setPMTRpCycles(1, 2, 7, 1, 0);
       int hl = this.getReg16Val(this.reg.HLpos);
       val8 = this.getFromPointer(hl);
-      this.comment = "Add-plus-carry the content of the memory address pointed by " + rName + " (";
-      this.comment += this.hex4(hl) + ": ";
     } else {
       this.setPMTRpCycles(1, 1, 4, 1, 0);
       val8 = this.getRegVal(r);
-      this.comment = "Add-plus-carry register " + rName + " content (";
     }
     val8 += this.reg.getCF();
-    preva = this.getRegVal(this.reg.Apos);
-    this.setRegVal(this.reg.Apos, preva + val8);
-    a = this.getRegVal(this.reg.Apos);
-    this.comment += this.hex2(val8) + ") to Accumulator, result = " + this.hex2(a) + "; Refresh Flags";
-
-    // Flag byte:
-    int sf, zf, yf, hf, xf, pvf, nf, cf;
-    sf = this.rshiftMask(a, this.reg.SFpos, 0x01);
-    zf = this.isZero(a); 
-    yf = this.rshiftMask(a, this.reg.YFpos, 0x01);
-    hf = this.halfCarry(preva, val8);
-    xf = this.rshiftMask(a, this.reg.XFpos, 0x01);
-    pvf = this.oVerflow(preva, val8, preva+val8);
-    nf = 0;
-    cf = this.carry(preva, val8);
-    this.reg.setFlags(sf, zf, yf, hf, xf, pvf, nf, cf);
+    int preva = this.getRegVal(this.reg.Apos);
+    int a = (preva + val8) & 0xFF;
+    this.setRegVal(this.reg.Apos, a);
+    this.comment = "value = " + this.hex2(a);
+    this.setFlagsAddType(a, preva, val8);
   }
 
   // -----------------------------------------------------------------------------------------------------
   void ADDAval (int val8) {
-    int a, preva;
     this.asmInstr = "ADD A, " + this.hex2(val8);
     this.setPMTRpCycles(2, 2, 7, 1, 1);
-    preva = this.getRegVal(this.reg.Apos);
-    this.setRegVal(this.reg.Apos, preva + val8);
-    a = this.getRegVal(this.reg.Apos);
-    this.comment = "Add (" + this.hex2(val8) + ") to Accumulator, result = " + this.hex2(a) + "; Refresh Flags";
-
-    // Flag byte:
-    int sf, zf, yf, hf, xf, pvf, nf, cf;
-    sf = this.rshiftMask(a, this.reg.SFpos, 0x01);
-    zf = this.isZero(a); 
-    yf = this.rshiftMask(a, this.reg.YFpos, 0x01);
-    hf = this.halfCarry(preva, val8);
-    xf = this.rshiftMask(a, this.reg.XFpos, 0x01);
-    pvf = this.oVerflow(preva, val8, preva+val8);
-    nf = 0;
-    cf = this.carry(preva, val8);
-    this.reg.setFlags(sf, zf, yf, hf, xf, pvf, nf, cf);
+    int preva = this.getRegVal(this.reg.Apos);
+    int a = (preva + val8) & 0xFF;
+    this.setRegVal(this.reg.Apos, a);
+    this.comment = "value = " + this.hex2(a);
+    this.setFlagsAddType(a, preva, val8);
   }
 
   // -----------------------------------------------------------------------------------------------------
   void ADCAval (int val8) {
-    int a, preva;
     this.asmInstr = "ADC A, " + this.hex2(val8);
     this.setPMTRpCycles(2, 2, 7, 1, 1);
     val8 += this.reg.getCF();
-    preva = this.getRegVal(this.reg.Apos);
-    this.setRegVal(this.reg.Apos, preva + val8);
-    a = this.getRegVal(this.reg.Apos);
-    this.comment = "Add-plus-carry (" + this.hex2(val8) + ") to Accumulator, result = ";
-    this.comment += this.hex2(a) + "; Refresh Flags";
-
-    // Flag byte:
-    int sf, zf, yf, hf, xf, pvf, nf, cf;
-    sf = this.rshiftMask(a, this.reg.SFpos, 0x01);
-    zf = this.isZero(a); 
-    yf = this.rshiftMask(a, this.reg.YFpos, 0x01);
-    hf = this.halfCarry(preva, val8);
-    xf = this.rshiftMask(a, this.reg.XFpos, 0x01);
-    pvf = this.oVerflow(preva, val8, preva+val8);
-    nf = 0;
-    cf = this.carry(preva, val8);
-    this.reg.setFlags(sf, zf, yf, hf, xf, pvf, nf, cf);
+    int preva = this.getRegVal(this.reg.Apos);
+    int a = (preva + val8) & 0xFF;
+    this.setRegVal(this.reg.Apos, a);
+    this.comment = "value = " + this.hex2(a);
+    this.setFlagsAddType(a, preva, val8);
   }
 
   // -----------------------------------------------------------------------------------------------------
   void SUBr (int r) {
-    int val8, a, preva;
+    int val8;
     String rName = this.regNameRS(r);
     this.asmInstr = "SUB " + rName;
     if (r == this.reg.contHLpos) {
       this.setPMTRpCycles(1, 2, 7, 1, 0);
       int hl = this.getReg16Val(this.reg.HLpos);
       val8 = this.getFromPointer(hl);
-      this.comment = "Sub the content of the memory address pointed by " + rName + " (" + this.hex4(hl) + ": ";
     } else {
       this.setPMTRpCycles(1, 1, 4, 1, 0);
       val8 = this.getRegVal(r);
-      this.comment = "Sub register " + rName + " content (";
     }
-    preva = this.getRegVal(this.reg.Apos);
-    this.setRegVal(this.reg.Apos, preva - val8);
-    a = this.getRegVal(this.reg.Apos);
-    this.comment += this.hex2(val8) + ") to Accumulator, result = " + this.hex2(a) + "; Refresh Flags";
+    int preva = this.getRegVal(this.reg.Apos);
+    int a = (preva - val8) & 0xFF;
+    this.setRegVal(this.reg.Apos, a);
+    this.comment = "value = " + this.hex2(a);
+    this.setFlagsSubType(a, preva, val8);
+  }
 
-    // Flag byte:
-    int sf, zf, yf, hf, xf, pvf, nf, cf;
-    sf = this.rshiftMask(a, this.reg.SFpos, 0x01);
-    zf = this.isZero(a); 
-    yf = this.rshiftMask(a, this.reg.YFpos, 0x01);
-    hf = this.halfBorrow(preva, val8);
-    xf = this.rshiftMask(a, this.reg.XFpos, 0x01);
-    pvf = this.oVerflow(preva, val8, preva-val8);
-    nf = 1;
-    cf = this.borrow(preva, val8);
-    this.reg.setFlags(sf, zf, yf, hf, xf, pvf, nf, cf);
+  // -----------------------------------------------------------------------------------------------------
+  void SUBp (int ixy, int horl) {
+    int val8;
+    String ixyName = this.reg.reg16Name[this.reg.IXpos + ixy];    
+    int val16 = this.getReg16Val(this.reg.IXpos + ixy);
+    if (horl == 0) { // IXh or IYh
+      val8 = (val16 & 0xFF00) >> 8;
+      ixyName += "h";
+    } else {
+      val8 = (val16 & 0x00FF) >> 0;
+      ixyName += "l";
+    }
+    int preva = this.getRegVal(this.reg.Apos);
+    this.asmInstr = "SUB " + ixyName;
+    this.setPMTRpCycles(2, 2, 8, 2, 0);
+    int a = (preva - val8) & 0xFF;
+    this.setRegVal(this.reg.Apos, a);
+    this.comment = "value = " + this.hex2(a);
+    this.setFlagsSubType(a, preva, val8);
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -273,216 +257,140 @@ class InstrAL8 extends InstrAL16 {
       prev = this.getFromPointer(hl);
       val8 = prev - 1;
       this.putInRegPointer(this.reg.HLpos, val8);
-      this.comment = "Decrements memory address pointed by " + rName + " (" + this.hex4(hl) + ": ";
     } else {
       this.setPMTRpCycles(1, 1, 4, 1, 0);
       prev = this.getRegVal(r);
       val8 = prev - 1;
       this.setRegVal(r, val8);
-      this.comment = "Decrements register " + rName + " content (";
     }
-    this.comment += this.hex2(prev) + "), result = " + this.hex2(val8) + "; Refresh Flags";
-
-    // Flag byte:
-    int sf, zf, yf, hf, xf, pvf, nf, cf;
-    sf = this.rshiftMask(val8, this.reg.SFpos, 0x01);
-    zf = this.isZero(val8); 
-    yf = this.rshiftMask(val8, this.reg.YFpos, 0x01);
-    hf = this.halfBorrow(prev, val8);
-    xf = this.rshiftMask(val8, this.reg.XFpos, 0x01);
-    pvf = (prev == 0x80) ? 1 : 0;
-    nf = 1;
-    cf = this.reg.getCF();
-    this.reg.setFlags(sf, zf, yf, hf, xf, pvf, nf, cf);
+    this.comment = "value = " + this.hex2(val8);
+    this.setFlagsDecType(prev, val8);
   }
 
   // -----------------------------------------------------------------------------------------------------
   void SUBval (int val8) {
-    int a, preva;
     this.asmInstr = "SUB " + this.hex2(val8);
     this.setPMTRpCycles(2, 2, 7, 1, 1);
-    preva = this.getRegVal(this.reg.Apos);
-    this.setRegVal(this.reg.Apos, preva - val8);
-    a = this.getRegVal(this.reg.Apos);
-    this.comment = "Sub value " + this.hex2(val8) + ") from Accumulator, result = ";
-    this.comment += this.hex2(a) + "; Refresh Flags";
-
-    // Flag byte:
-    int sf, zf, yf, hf, xf, pvf, nf, cf;
-    sf = this.rshiftMask(a, this.reg.SFpos, 0x01);
-    zf = this.isZero(a); 
-    yf = this.rshiftMask(a, this.reg.YFpos, 0x01);
-    hf = this.halfBorrow(preva, val8);
-    xf = this.rshiftMask(a, this.reg.XFpos, 0x01);
-    pvf = this.oVerflow(preva, val8, preva-val8);
-    nf = 1;
-    cf = this.borrow(preva, val8);
-    this.reg.setFlags(sf, zf, yf, hf, xf, pvf, nf, cf);
+    int preva = this.getRegVal(this.reg.Apos);
+    int a = (preva - val8) & 0xFF;
+    this.setRegVal(this.reg.Apos, a);
+    this.comment = "value = " + this.hex2(a);
+    this.setFlagsSubType(a, preva, val8);
   }
 
   // -----------------------------------------------------------------------------------------------------
   void SBCAr (int r) {
-    int val8, a, preva;
+    int val8;
     String rName = this.regNameRS(r);
     this.asmInstr = "SBC A, " + rName;
     if (r == this.reg.contHLpos) {
       this.setPMTRpCycles(1, 2, 7, 1, 0);
       int hl = this.getReg16Val(this.reg.HLpos);
       val8 = this.getFromPointer(hl);
-      this.comment = "Sub-plus_carry the content of the memory address pointed by " + rName + " (";
-      this.comment += this.hex4(hl) + ": ";
     } else {
       this.setPMTRpCycles(1, 1, 4, 1, 0);
       val8 = this.getRegVal(r);
-      this.comment = "Sub-plus_carry register " + rName + " content (";
     }
-    preva = this.getRegVal(this.reg.Apos);
     val8 +=  this.reg.getCF();
-    this.setRegVal(this.reg.Apos, preva - val8);
-    a = this.getRegVal(this.reg.Apos);
-    this.comment += this.hex2(val8) + ") to Accumulator, result = " + this.hex2(a) + "; Refresh Flags";
+    int preva = this.getRegVal(this.reg.Apos);
+    int a = (preva - val8) & 0xFF;
+    this.setRegVal(this.reg.Apos, a);
+    this.comment = "value = " + this.hex2(a);
+    this.setFlagsSubType(a, preva, val8);
+  }
 
-    // Flag byte:
-    int sf, zf, yf, hf, xf, pvf, nf, cf;
-    sf = this.rshiftMask(a, this.reg.SFpos, 0x01);
-    zf = this.isZero(a); 
-    yf = this.rshiftMask(a, this.reg.YFpos, 0x01);
-    hf = this.halfBorrow(preva, val8);
-    xf = this.rshiftMask(a, this.reg.XFpos, 0x01);
-    pvf = this.oVerflow(preva, val8, preva-val8);
-    nf = 1;
-    cf = this.borrow(preva, val8);
-    this.reg.setFlags(sf, zf, yf, hf, xf, pvf, nf, cf);
+  // -----------------------------------------------------------------------------------------------------
+  void SBCAp (int ixy, int horl) {
+    int val8;
+    String ixyName = this.reg.reg16Name[this.reg.IXpos + ixy];    
+    int val16 = this.getReg16Val(this.reg.IXpos + ixy);
+    if (horl == 0) { // IXh or IYh
+      val8 = (val16 & 0xFF00) >> 8;
+      ixyName += "h";
+    } else {
+      val8 = (val16 & 0x00FF) >> 0;
+      ixyName += "l";
+    }
+    val8 += this.reg.getCF();
+    int preva = this.getRegVal(this.reg.Apos);
+    this.asmInstr = "SBC A, " + ixyName;
+    this.setPMTRpCycles(2, 2, 8, 2, 0);
+    int a = (preva - val8) & 0xFF;
+    this.setRegVal(this.reg.Apos, a);
+    this.comment = "value = " + this.hex2(a);
+    this.setFlagsSubType(a, preva, val8);
   }
 
   // -----------------------------------------------------------------------------------------------------
   void SBCAval (int val8) {
-    int a, preva;
     this.asmInstr = "SBC A, " + this.hex2(val8);
     this.setPMTRpCycles(2, 2, 7, 1, 1);
-    preva = this.getRegVal(this.reg.Apos);
     val8 +=  this.reg.getCF();
-    this.setRegVal(this.reg.Apos, preva - val8);
-    a = this.getRegVal(this.reg.Apos);
-    this.comment = "Sub-plus_carry value " + this.hex2(val8) + ") from Accumulator, result = ";
-    this.comment += this.hex2(a) + "; Refresh Flags";
-
-    // Flag byte:
-    int sf, zf, yf, hf, xf, pvf, nf, cf;
-    sf = this.rshiftMask(a, this.reg.SFpos, 0x01);
-    zf = this.isZero(a); 
-    yf = this.rshiftMask(a, this.reg.YFpos, 0x01);
-    hf = this.halfBorrow(preva, val8);
-    xf = this.rshiftMask(a, this.reg.XFpos, 0x01);
-    pvf = this.oVerflow(preva, val8, preva-val8);
-    nf = 1;
-    cf = this.borrow(preva, val8);
-    this.reg.setFlags(sf, zf, yf, hf, xf, pvf, nf, cf);
+    int preva = this.getRegVal(this.reg.Apos);
+    int a = (preva - val8) & 0xFF;
+    this.setRegVal(this.reg.Apos, a);
+    this.comment = "value = " + this.hex2(a);
+    this.setFlagsSubType(a, preva, val8);
   }
 
   // -----------------------------------------------------------------------------------------------------
   void ANDAr (int r) {
     int val8;
-    int a, preva;
     String rName = this.regNameRS(r);
     this.asmInstr = "AND " + rName;
-    this.comment = "Bitwise AND between the Accumulator and the value ";
     if (r == this.reg.contHLpos) {
       this.setPMTRpCycles(1, 2, 7, 1, 0);
       int hl = this.getReg16Val(this.reg.HLpos);
       val8 = this.getFromPointer(hl);
-      this.comment += "at the memory address pointed by " + rName + " (" + this.hex4(hl) + ": ";
     } else {
       this.setPMTRpCycles(1, 1, 4, 1, 0);
       val8 = this.getRegVal(r);
-      this.comment = "in the register " + rName + " content (";
     }
-    preva = this.getRegVal(this.reg.Apos);
-    this.setRegVal(this.reg.Apos, preva & val8);
-    a = this.getRegVal(this.reg.Apos);
-    this.comment += this.hex2(val8) + "), result = " + this.hex2(a) + "; Refresh Flags";
-
-    // Flag byte:
-    int sf, zf, yf, hf, xf, pvf, nf, cf;
-    sf = this.rshiftMask(a, this.reg.SFpos, 0x01);
-    zf = this.isZero(a); 
-    yf = this.rshiftMask(a, this.reg.YFpos, 0x01);
-    hf = 1;
-    xf = this.rshiftMask(a, this.reg.XFpos, 0x01);
-    pvf = this.oVerflow(preva, val8, preva+val8);
-    nf = 0;
-    cf = 0;
-    this.reg.setFlags(sf, zf, yf, hf, xf, pvf, nf, cf);
+    int preva = this.getRegVal(this.reg.Apos);
+    int a = (preva & val8) & 0xFF;
+    this.setRegVal(this.reg.Apos, a);
+    this.comment = "value = " + this.hex2(a);
+    this.setFlagsAndType(a, preva, val8);
   }
 
   // -----------------------------------------------------------------------------------------------------
   void ORAr (int r) {
     int val8;
-    int a, preva;
     String rName = this.regNameRS(r);
     this.asmInstr = "OR " + rName;
-    this.comment = "Bitwise OR between the Accumulator and the value ";
     if (r == this.reg.contHLpos) {
       this.setPMTRpCycles(1, 2, 7, 1, 0);
       int hl = this.getReg16Val(this.reg.HLpos);
       val8 = this.getFromPointer(hl);
-      this.comment += "at the memory address pointed by " + rName + " (" + this.hex4(hl) + ": ";
     } else {
       this.setPMTRpCycles(1, 1, 4, 1, 0);
       val8 = this.getRegVal(r);
-      this.comment = "in the register " + rName + " content (";
     }
-    preva = this.getRegVal(this.reg.Apos);
-    this.setRegVal(this.reg.Apos, preva | val8);
-    a = this.getRegVal(this.reg.Apos);
-    this.comment += this.hex2(val8) + "), result = " + this.hex2(a) + "; Refresh Flags";
-
-    // Flag byte:
-    int sf, zf, yf, hf, xf, pvf, nf, cf;
-    sf = this.rshiftMask(a, this.reg.SFpos, 0x01);
-    zf = this.isZero(a); 
-    yf = this.rshiftMask(a, this.reg.YFpos, 0x01);
-    hf = 0;
-    xf = this.rshiftMask(a, this.reg.XFpos, 0x01);
-    pvf = this.oVerflow(preva, val8, preva+val8);
-    nf = 0;
-    cf = 0;
-    this.reg.setFlags(sf, zf, yf, hf, xf, pvf, nf, cf);
+    int preva = this.getRegVal(this.reg.Apos);
+    int a = (preva | val8) & 0xFF;
+    this.setRegVal(this.reg.Apos, a);
+    this.comment = "value = " + this.hex2(a);
+    this.setFlagsOrType(a, preva, val8);
   }
 
   // -----------------------------------------------------------------------------------------------------
   void XORAr (int r) {
     int val8;
-    int a, preva;
     String rName = this.regNameRS(r);
     this.asmInstr = "XOR " + rName;
-    this.comment = "Bitwise eXclusive-OR between the Accumulator and the value ";
     if (r == this.reg.contHLpos) {
       this.setPMTRpCycles(1, 2, 7, 1, 0);
       int hl = this.getReg16Val(this.reg.HLpos);
       val8 = this.getFromPointer(hl);
-      this.comment += "at the memory address pointed by " + rName + " (" + this.hex4(hl) + ": ";
     } else {
       this.setPMTRpCycles(1, 1, 4, 1, 0);
       val8 = this.getRegVal(r);
-      this.comment = "in the register " + rName + " content (";
     }
-    preva = this.getRegVal(this.reg.Apos);
-    this.setRegVal(this.reg.Apos, preva ^ val8);
-    a = this.getRegVal(this.reg.Apos);
-    this.comment += this.hex2(val8) + "), result = " + this.hex2(a) + "; Refresh Flags";
-
-    // Flag byte:
-    int sf, zf, yf, hf, xf, pvf, nf, cf;
-    sf = this.rshiftMask(a, this.reg.SFpos, 0x01);
-    zf = this.isZero(a); 
-    yf = this.rshiftMask(a, this.reg.YFpos, 0x01);
-    hf = 0;
-    xf = this.rshiftMask(a, this.reg.XFpos, 0x01);
-    pvf = this.parity(a);
-    nf = 0;
-    cf = 0;
-    this.reg.setFlags(sf, zf, yf, hf, xf, pvf, nf, cf);
+    int preva = this.getRegVal(this.reg.Apos);
+    int a = (preva ^ val8) & 0xFF;
+    this.setRegVal(this.reg.Apos, a);
+    this.comment = "value = " + this.hex2(a);
+    this.setFlagsXorType(a);
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -491,104 +399,172 @@ class InstrAL8 extends InstrAL16 {
     int a, compa;
     String rName = this.regNameRS(r);
     this.asmInstr = "CP " + rName;
-    this.comment = "Compare content of Accumulator with value ";
     if (r == this.reg.contHLpos) {
       this.setPMTRpCycles(1, 2, 7, 1, 0);
       int hl = this.getReg16Val(this.reg.HLpos);
       val8 = this.getFromPointer(hl);
-      this.comment += "at the memory address pointed by " + rName + " (" + this.hex4(hl) + ": ";
     } else {
       this.setPMTRpCycles(1, 1, 4, 1, 0);
       val8 = this.getRegVal(r);
-      this.comment = "in the register " + rName + " content (";
     }
     a = this.getRegVal(this.reg.Apos);
     compa = a - val8;
-    this.comment += this.hex2(val8) + "), Accu not modified; Refresh Flags";
+    this.comment = "Compare = " + this.hex2(compa);
+    this.setFlagsCpType(a, compa, val8);
+  }
 
-    // Flag byte:
-    int sf, zf, yf, hf, xf, pvf, nf, cf;
-    sf = this.rshiftMask(compa, this.reg.SFpos, 0x01);
-    zf = this.isZero(compa); 
-    yf = this.rshiftMask(a, this.reg.YFpos, 0x01);
-    hf = this.halfBorrow(a, val8);
-    xf = this.rshiftMask(a, this.reg.XFpos, 0x01);
-    pvf = this.oVerflow(a, val8, a-val8);
-    nf = 1;
-    cf = this.borrow(a, val8);
-    this.reg.setFlags(sf, zf, yf, hf, xf, pvf, nf, cf);
+  // -----------------------------------------------------------------------------------------------------
+  void ANDp (int ixy, int horl) {
+    int val8;
+    String ixyName = this.reg.reg16Name[this.reg.IXpos + ixy];    
+    int val16 = this.getReg16Val(this.reg.IXpos + ixy);
+    if (horl == 0) { // IXh or IYh
+      val8 = (val16 & 0xFF00) >> 8;
+      ixyName += "h";
+    } else {
+      val8 = (val16 & 0x00FF) >> 0;
+      ixyName += "l";
+    }
+    int preva = this.getRegVal(this.reg.Apos);
+    this.asmInstr = "AND " + ixyName;
+    this.setPMTRpCycles(2, 2, 8, 2, 0);
+    int a = preva & val8;
+    this.setRegVal(this.reg.Apos, a);
+    this.comment = "value = " + this.hex2(a);
+    this.setFlagsAndType(a, preva, val8);
+  }
+
+  // -----------------------------------------------------------------------------------------------------
+  void ORp (int ixy, int horl) {
+    int val8;
+    String ixyName = this.reg.reg16Name[this.reg.IXpos + ixy];    
+    int val16 = this.getReg16Val(this.reg.IXpos + ixy);
+    if (horl == 0) { // IXh or IYh
+      val8 = (val16 & 0xFF00) >> 8;
+      ixyName += "h";
+    } else {
+      val8 = (val16 & 0x00FF) >> 0;
+      ixyName += "l";
+    }
+    int preva = this.getRegVal(this.reg.Apos);
+    this.asmInstr = "OR " + ixyName;
+    this.setPMTRpCycles(2, 2, 8, 2, 0);
+    int a = preva | val8;
+    this.setRegVal(this.reg.Apos, a);
+    this.comment = "value = " + this.hex2(a);
+    this.setFlagsOrType(a, preva, val8);
+  }
+
+  // -----------------------------------------------------------------------------------------------------
+  void XORp (int ixy, int horl) {
+    int val8;
+    String ixyName = this.reg.reg16Name[this.reg.IXpos + ixy];    
+    int val16 = this.getReg16Val(this.reg.IXpos + ixy);
+    if (horl == 0) { // IXh or IYh
+      val8 = (val16 & 0xFF00) >> 8;
+      ixyName += "h";
+    } else {
+      val8 = (val16 & 0x00FF) >> 0;
+      ixyName += "l";
+    }
+    int preva = this.getRegVal(this.reg.Apos);
+    this.asmInstr = "XOR " + ixyName;
+    this.setPMTRpCycles(2, 2, 8, 2, 0);
+    int a = preva ^ val8;
+    this.setRegVal(this.reg.Apos, a);
+    this.comment = "value = " + this.hex2(a);
+    this.setFlagsXorType(a);
+  }
+
+  // -----------------------------------------------------------------------------------------------------
+  void CPp (int ixy, int horl) {
+    int val8;
+    String ixyName = this.reg.reg16Name[this.reg.IXpos + ixy];    
+    int val16 = this.getReg16Val(this.reg.IXpos + ixy);
+    if (horl == 0) { // IXh or IYh
+      val8 = (val16 & 0xFF00) >> 8;
+      ixyName += "h";
+    } else {
+      val8 = (val16 & 0x00FF) >> 0;
+      ixyName += "l";
+    }
+    int preva = this.getRegVal(this.reg.Apos);
+    this.asmInstr = "CP " + ixyName;
+    this.setPMTRpCycles(2, 2, 8, 2, 0);
+    int a = (preva - val8) & 0xFF;
+    this.comment = "value = " + this.hex2(a);
+    this.setFlagsCpType(a, preva, val8);
+  }
+
+  // -----------------------------------------------------------------------------------------------------
+  void INCp (int ixy, int horl) {
+    int preval8, val8;
+    String ixyName = this.reg.reg16Name[this.reg.IXpos + ixy];    
+    int val16 = this.getReg16Val(this.reg.IXpos + ixy);
+    if (horl == 0) { // IXh or IYh
+      preval8 = (val16 & 0xFF00) >> 8;
+      ixyName += "h";
+    } else {
+      preval8 = (val16 & 0x00FF) >> 0;
+      ixyName += "l";
+    }
+    this.asmInstr = "INC " + ixyName;
+    this.setPMTRpCycles(2, 2, 8, 2, 0);
+    val8 = (preval8 + 1) & 0xFF;
+    this.comment = "value = " + this.hex2(val8);
+    this.setFlagsIncType(val8, preval8);
+  }
+
+  // -----------------------------------------------------------------------------------------------------
+  void DECp (int ixy, int horl) {
+    int preval8, val8;
+    String ixyName = this.reg.reg16Name[this.reg.IXpos + ixy];    
+    int val16 = this.getReg16Val(this.reg.IXpos + ixy);
+    if (horl == 0) { // IXh or IYh
+      preval8 = (val16 & 0xFF00) >> 8;
+      ixyName += "h";
+    } else {
+      preval8 = (val16 & 0x00FF) >> 0;
+      ixyName += "l";
+    }
+    this.asmInstr = "DEC " + ixyName;
+    this.setPMTRpCycles(2, 2, 8, 2, 0);
+    val8 = (preval8 - 1) & 0xFF;
+    this.comment = "value = " + this.hex2(val8);
+    this.setFlagsDecType(val8, preval8);
   }
 
   // -----------------------------------------------------------------------------------------------------
   void ANDAval (int val8) {
-    int a, preva;
     this.asmInstr = "AND " + this.hex2(val8);
     this.setPMTRpCycles(2, 2, 7, 1, 1);
-    preva = this.getRegVal(this.reg.Apos);
-    this.setRegVal(this.reg.Apos, preva & val8);
-    a = this.getRegVal(this.reg.Apos);
-    this.comment = "Bitwise AND between the Accumulator and the value ";
-    this.comment += this.hex2(val8) + "), result = " + this.hex2(a) + "; Refresh Flags";
-
-    // Flag byte:
-    int sf, zf, yf, hf, xf, pvf, nf, cf;
-    sf = this.rshiftMask(a, this.reg.SFpos, 0x01);
-    zf = this.isZero(a); 
-    yf = this.rshiftMask(a, this.reg.YFpos, 0x01);
-    hf = 1;
-    xf = this.rshiftMask(a, this.reg.XFpos, 0x01);
-    pvf = this.oVerflow(preva, val8, preva+val8);
-    nf = 0;
-    cf = 0;
-    this.reg.setFlags(sf, zf, yf, hf, xf, pvf, nf, cf);
+    int preva = this.getRegVal(this.reg.Apos);
+    int a = (preva & val8) & 0xFF;
+    this.setRegVal(this.reg.Apos, a);
+    this.comment = "value = " + this.hex2(a);
+    this.setFlagsAndType(a, preva, val8);
   }
 
   // -----------------------------------------------------------------------------------------------------
   void ORAval (int val8) {
-    int a, preva;
     this.asmInstr = "OR " + this.hex2(val8);
     this.setPMTRpCycles(2, 2, 7, 1, 1);
-    preva = this.getRegVal(this.reg.Apos);
-    this.setRegVal(this.reg.Apos, preva | val8);
-    a = this.getRegVal(this.reg.Apos);
-    this.comment = "Bitwise OR between the Accumulator and the value ";
-    this.comment += this.hex2(val8) + "), result = " + this.hex2(a) + "; Refresh Flags";
-
-    // Flag byte:
-    int sf, zf, yf, hf, xf, pvf, nf, cf;
-    sf = this.rshiftMask(a, this.reg.SFpos, 0x01);
-    zf = this.isZero(a); 
-    yf = this.rshiftMask(a, this.reg.YFpos, 0x01);
-    hf = 0;
-    xf = this.rshiftMask(a, this.reg.XFpos, 0x01);
-    pvf = this.oVerflow(preva, val8, preva+val8);
-    nf = 0;
-    cf = 0;
-    this.reg.setFlags(sf, zf, yf, hf, xf, pvf, nf, cf);
+    int preva = this.getRegVal(this.reg.Apos);
+    int a = (preva | val8) & 0xFF;
+    this.setRegVal(this.reg.Apos, a);
+    this.comment = "value = " + this.hex2(a);
+    this.setFlagsOrType(a, preva, val8);
   }
 
   // -----------------------------------------------------------------------------------------------------
   void XORAval (int val8) {
-    int a, preva;
     this.asmInstr = "XOR " + this.hex2(val8);
     this.setPMTRpCycles(2, 2, 7, 1, 1);
-    preva = this.getRegVal(this.reg.Apos);
-    this.setRegVal(this.reg.Apos, preva ^ val8);
-    a = this.getRegVal(this.reg.Apos);
-    this.comment = "Bitwise eXclusive-OR between between the Accumulator and the value ";
-    this.comment += this.hex2(val8) + "), result = " + this.hex2(a) + "; Refresh Flags";
-
-    // Flag byte:
-    int sf, zf, yf, hf, xf, pvf, nf, cf;
-    sf = this.rshiftMask(a, this.reg.SFpos, 0x01);
-    zf = this.isZero(a); 
-    yf = this.rshiftMask(a, this.reg.YFpos, 0x01);
-    hf = 0;
-    xf = this.rshiftMask(a, this.reg.XFpos, 0x01);
-    pvf = this.parity(a);
-    nf = 0;
-    cf = 0;
-    this.reg.setFlags(sf, zf, yf, hf, xf, pvf, nf, cf);
+    int preva = this.getRegVal(this.reg.Apos);
+    int a = (preva ^ val8) & 0xFF;
+    this.setRegVal(this.reg.Apos, a);
+    this.comment = "value = " + this.hex2(a);
+    this.setFlagsXorType(a);
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -598,19 +574,173 @@ class InstrAL8 extends InstrAL16 {
     this.setPMTRpCycles(2, 2, 7, 1, 1);
     a = this.getRegVal(this.reg.Apos);
     compa = a - val8;
-    this.comment = "Compare content of Accumulator with value " + this.hex2(val8);
-    this.comment += ", Accu not modified; Refresh Flags";
+    this.comment = "Compare = " + this.hex2(compa);
+    this.setFlagsCpType(a, compa, val8);
+  }
 
-    // Flag byte:
-    int sf, zf, yf, hf, xf, pvf, nf, cf;
-    sf = this.rshiftMask(compa, this.reg.SFpos, 0x01);
-    zf = this.isZero(compa); 
-    yf = this.rshiftMask(a, this.reg.YFpos, 0x01);
-    hf = this.halfBorrow(a, val8);
-    xf = this.rshiftMask(a, this.reg.XFpos, 0x01);
-    pvf = this.oVerflow(a, val8, a-val8);
-    nf = 1;
-    cf = this.borrow(a, val8);
-    this.reg.setFlags(sf, zf, yf, hf, xf, pvf, nf, cf);
+  // -----------------------------------------------------------------------------------------------------
+  void ADDAcontIXYtc (int ixy, int twoscomp) {
+    String ixyName = this.reg.reg16Name[this.reg.IXpos + ixy];    
+    int displacement = this.twoComp2signed(twoscomp);
+    String sign = (displacement < 0) ? "-" : "+";
+    this.asmInstr = "ADD A, " + ixyName + sign + abs(displacement) + ")";
+    this.setPMTRpCycles(3, 5, 19, 2, 1);
+    int mem16 = this.getReg16Val(this.reg.IXpos + ixy) + displacement;
+    int val8 = this.getFromPointer(mem16);
+    int preva = this.getRegVal(this.reg.Apos);
+    int a = (preva + val8) & 0xFF;
+    this.setRegVal(this.reg.Apos, a);
+    this.comment = "value = " + this.hex2(a);
+    this.comment += "; displacement = " + sign + abs(displacement);
+    this.setFlagsAddType(a, preva, val8);
+  }
+
+  // -----------------------------------------------------------------------------------------------------
+  void ADCAcontIXYtc (int ixy, int twoscomp) {
+    String ixyName = this.reg.reg16Name[this.reg.IXpos + ixy];    
+    int displacement = this.twoComp2signed(twoscomp);
+    String sign = (displacement < 0) ? "-" : "+";
+    this.asmInstr = "ADC A, " + ixyName + sign + abs(displacement) + ")";
+    this.setPMTRpCycles(3, 5, 19, 2, 1);
+    int mem16 = this.getReg16Val(this.reg.IXpos + ixy) + displacement;
+    int val8 = this.getFromPointer(mem16);
+    val8 += this.reg.getCF();
+    int preva = this.getRegVal(this.reg.Apos);
+    int a = (preva + val8) & 0xFF;
+    this.setRegVal(this.reg.Apos, a);
+    this.comment = "value = " + this.hex2(a);
+    this.comment += "; displacement = " + sign + abs(displacement);
+    this.setFlagsAddType(a, preva, val8);
+  }
+
+  // -----------------------------------------------------------------------------------------------------
+  void SUBcontIXYtc (int ixy, int twoscomp) {
+    String ixyName = this.reg.reg16Name[this.reg.IXpos + ixy];    
+    int displacement = this.twoComp2signed(twoscomp);
+    String sign = (displacement < 0) ? "-" : "+";
+    this.asmInstr = "SUB " + ixyName + sign + abs(displacement) + ")";
+    this.setPMTRpCycles(3, 5, 19, 2, 1);
+    int mem16 = this.getReg16Val(this.reg.IXpos + ixy) + displacement;
+    int val8 = this.getFromPointer(mem16);
+    val8 += this.reg.getCF();
+    int preva = this.getRegVal(this.reg.Apos);
+    int a = (preva - val8) & 0xFF;
+    this.setRegVal(this.reg.Apos, a);
+    this.comment = "value = " + this.hex2(a);
+    this.comment += "; displacement = " + sign + abs(displacement);
+    this.setFlagsSubType(a, preva, val8);
+  }
+
+  // -----------------------------------------------------------------------------------------------------
+  void SBCAcontIXYtc (int ixy, int twoscomp) {
+    String ixyName = this.reg.reg16Name[this.reg.IXpos + ixy];    
+    int displacement = this.twoComp2signed(twoscomp);
+    String sign = (displacement < 0) ? "-" : "+";
+    this.asmInstr = "SBC A, " + ixyName + sign + abs(displacement) + ")";
+    this.setPMTRpCycles(3, 5, 19, 2, 1);
+    int mem16 = this.getReg16Val(this.reg.IXpos + ixy) + displacement;
+    int val8 = this.getFromPointer(mem16);
+    val8 += this.reg.getCF();
+    int preva = this.getRegVal(this.reg.Apos);
+    int a = (preva - val8) & 0xFF;
+    this.setRegVal(this.reg.Apos, a);
+    this.comment = "value = " + this.hex2(a);
+    this.comment += "; displacement = " + sign + abs(displacement);
+    this.setFlagsSubType(a, preva, val8);
+  }
+
+  // -----------------------------------------------------------------------------------------------------
+  void ANDAcontIXYtc (int ixy, int twoscomp) {
+    String ixyName = this.reg.reg16Name[this.reg.IXpos + ixy];    
+    int displacement = this.twoComp2signed(twoscomp);
+    String sign = (displacement < 0) ? "-" : "+";
+    this.asmInstr = "AND (" + ixyName + sign + abs(displacement) + ")";
+    this.setPMTRpCycles(3, 5, 19, 2, 1);
+    int mem16 = this.getReg16Val(this.reg.IXpos + ixy) + displacement;
+    int val8 = this.getFromPointer(mem16);
+    int preva = this.getRegVal(this.reg.Apos);
+    int a = (preva & val8) & 0xFF;
+    this.setRegVal(this.reg.Apos, a);
+    this.comment = "Value = " + this.hex2(a);
+    this.comment += "; displacement = " + sign + abs(displacement);
+    this.setFlagsAndType(a, preva, val8);
+  }
+
+  // -----------------------------------------------------------------------------------------------------
+  void ORAcontIXYtc (int ixy, int twoscomp) {
+    String ixyName = this.reg.reg16Name[this.reg.IXpos + ixy];    
+    int displacement = this.twoComp2signed(twoscomp);
+    String sign = (displacement < 0) ? "-" : "+";
+    this.asmInstr = "OR (" + ixyName + sign + abs(displacement) + ")";
+    this.setPMTRpCycles(3, 5, 19, 2, 1);
+    int mem16 = this.getReg16Val(this.reg.IXpos + ixy) + displacement;
+    int val8 = this.getFromPointer(mem16);
+    int preva = this.getRegVal(this.reg.Apos);
+    int a = (preva | val8) & 0xFF;
+    this.setRegVal(this.reg.Apos, a);
+    this.comment = "Value = " + this.hex2(a);
+    this.comment += "; displacement = " + sign + abs(displacement);
+    this.setFlagsOrType(a, preva, val8);
+  }
+
+  // -----------------------------------------------------------------------------------------------------
+  void XORAcontIXYtc (int ixy, int twoscomp) {
+    String ixyName = this.reg.reg16Name[this.reg.IXpos + ixy];    
+    int displacement = this.twoComp2signed(twoscomp);
+    String sign = (displacement < 0) ? "-" : "+";
+    this.asmInstr = "XOR (" + ixyName + sign + abs(displacement) + ")";
+    this.setPMTRpCycles(3, 5, 19, 2, 1);
+    int mem16 = this.getReg16Val(this.reg.IXpos + ixy) + displacement;
+    int val8 = this.getFromPointer(mem16);
+    int preva = this.getRegVal(this.reg.Apos);
+    int a = (preva ^ val8) & 0xFF;
+    this.setRegVal(this.reg.Apos, a);
+    this.comment = "Value = " + this.hex2(a);
+    this.comment += "; displacement = " + sign + abs(displacement);
+    this.setFlagsXorType(a);
+  }
+
+  // -----------------------------------------------------------------------------------------------------
+  void CPAcontIXYtc (int ixy, int twoscomp) {
+    String ixyName = this.reg.reg16Name[this.reg.IXpos + ixy];    
+    int displacement = this.twoComp2signed(twoscomp);
+    String sign = (displacement < 0) ? "-" : "+";
+    this.asmInstr = "CP (" + ixyName + sign + abs(displacement) + ")";
+    this.setPMTRpCycles(3, 5, 19, 2, 1);
+    int mem16 = this.getReg16Val(this.reg.IXpos + ixy) + displacement;
+    int val8 = this.getFromPointer(mem16);
+    int a = this.getRegVal(this.reg.Apos);
+    int compa = (a - val8) & 0xFF;
+    this.comment = "displacement = " + sign + abs(displacement);
+    this.setFlagsCpType(a, compa, val8);
+  }
+
+  // -----------------------------------------------------------------------------------------------------
+  void INCcontIXYtc (int ixy, int twoscomp) {
+    String ixyName = this.reg.reg16Name[this.reg.IXpos + ixy];    
+    int displacement = this.twoComp2signed(twoscomp);
+    String sign = (displacement < 0) ? "-" : "+";
+    this.asmInstr = "INC (" + ixyName + sign + abs(displacement) + ")";
+    this.setPMTRpCycles(3, 6, 26, 2, 1);
+    int mem16 = this.getReg16Val(this.reg.IXpos + ixy) + displacement;
+    int preval8 = this.getFromPointer(mem16);
+    int val8 = preval8 + 1;
+    this.putInPointer(mem16, val8);
+    this.comment = "displacement = " + sign + abs(displacement);
+    this.setFlagsIncType(preval8, val8);
+  }
+  // -----------------------------------------------------------------------------------------------------
+  void DECcontIXYtc (int ixy, int twoscomp) {
+    String ixyName = this.reg.reg16Name[this.reg.IXpos + ixy];    
+    int displacement = this.twoComp2signed(twoscomp);
+    String sign = (displacement < 0) ? "-" : "+";
+    this.asmInstr = "DEC (" + ixyName + sign + abs(displacement) + ")";
+    this.setPMTRpCycles(3, 6, 26, 2, 1);
+    int mem16 = this.getReg16Val(this.reg.IXpos + ixy) + displacement;
+    int preval8 = this.getFromPointer(mem16);
+    int val8 = preval8 - 1;
+    this.putInPointer(mem16, val8);
+    this.comment = "displacement = " + sign + abs(displacement);
+    this.setFlagsDecType(preval8, val8);
   }
 }

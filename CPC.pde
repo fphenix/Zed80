@@ -13,8 +13,18 @@ class CPC {
   int speed;
   boolean stepForward;
   boolean freerun;
-
+  boolean bootup = true;
+  
   CPC () {
+    this.init(true);
+  }
+
+  CPC (boolean boot) {
+    this.init(boot);
+  }
+  
+  void init (boolean boot) {
+    this.bootup = boot;
     this.stepForward = false;
     this.freerun = false;
 
@@ -33,7 +43,9 @@ class CPC {
     this.psg.setRef(this.z80);
 
     this.mem.RETVectors();
-    this.mem.bootUpMem();
+    if (this.bootup) {
+      this.mem.bootUpMem();
+    }
     this.z80.initPC(0);
 
     //this.diskette.readFile();
@@ -41,8 +53,9 @@ class CPC {
     //this.diskette.loadFile("HEADOVER.I", this.ram, 0x4000);
     //this.diskette.loadFile("HEADOVER.II", this.ram, 0xc000);
     //this.diskette.loadFile("HEADOVER.III", this.ram);
-    
+
     this.mem.romDump();
+    log.logln("PCaddr : Opcodes     : Assembly              ; SZ-H-PNC ; Comment");
   }
 
   void setReg(int b, int c, int d, int e, int h, int l, int a, int f) {
@@ -64,7 +77,10 @@ class CPC {
     this.speed = (sp < 1) ? 1 : sp;
   }
 
-
+  void setShowingDebugMem (int m) {
+    this.ga.dbg.setShowingMem(m);
+  }
+  
   void setBKP (int breakpoint) {
     this.z80.reg.setBKP(breakpoint & 0xFFFF);
     this.z80.reg.setBKPOn();
@@ -95,6 +111,7 @@ class CPC {
 
   void step() {
     loop();
+    this.freerun = false;
     this.stepForward = true;
     this.z80.reg.setBKPOff();
     this.run();
@@ -106,13 +123,13 @@ class CPC {
 
   void run () {
     for (int sp = 0; sp < this.speed; sp ++) {
-      if ((this.iterMax > 0) && (this.iter == this.iterMax)) {
+      if ((this.iterMax > 0) && (this.iter >= this.iterMax)) {
         println("Reached max iter");
         this.halt();
         noLoop();
         break;
       }
-      if ((this.iter % 20) == 0) {
+      if ((this.speed > 1) && ((this.iter % 20) == 0)) {
         this.ga.display();
       }
       if ((this.z80.reg.breakMode) && (this.z80.reg.breakPoint == this.z80.pc)) {

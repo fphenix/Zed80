@@ -27,7 +27,7 @@ class InstrStack extends InstrJmp {
     this.setPMTRpCycles(1, 3, 11, 1, 0);
     int val16 = this.getReg16Val(qq);
     this.put16InStack(val16);
-    this.comment = "PUSH the value in " + rQName + " (" + this.hex4(val16) + ") on the Stack";
+    this.comment = "PUSH Value " + this.hex4(val16);
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -45,7 +45,7 @@ class InstrStack extends InstrJmp {
     int val16 = (val[1] << 8) + val[0];
     this.setRegVal(rbn + 0, val[this.reg.MSB]); // MSB
     this.setRegVal(rbn + 1, val[this.reg.LSB]); // LSB
-    this.comment = "POP the value in the Stack (" + this.hex4(val16) + ") in the register " + rQName;
+    this.comment = "POP Value " + this.hex4(val16);
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -55,7 +55,7 @@ class InstrStack extends InstrJmp {
     this.setPMTRpCycles(2, 4, 15, 2, 0);
     int val16 = this.getReg16Val(this.reg.IXpos + ixy);
     this.put16InStack(val16);
-    this.comment = "PUSH the value in " + ixyName + " (" + this.hex4(val16) + ") on the Stack";
+    this.comment = "PUSH Value " + this.hex4(val16);
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -65,8 +65,7 @@ class InstrStack extends InstrJmp {
     this.setPMTRpCycles(2, 4, 14, 2, 0);
     int val16 = this.get16FromStack();
     this.setReg16Val(this.reg.IXpos + ixy, val16);
-    this.comment = "POP the value in the Stack (" + this.hex4(val16) + ") in the register " + ixyName;
+    this.comment = "POP Value " + this.hex4(val16);
   }
-
-
+  
 }
