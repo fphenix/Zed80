@@ -1,0 +1,38 @@
+[
+  {
+    "loadaddr": 0,
+    "fname": "TESTLD1.BIN",
+    "filetype": 2,
+    "data": "00 01 34 12 11 78 56 21 BC 9A 31 D0 FE 00 3E A 00 40 41 42 43 44 45 47 48 49 4A 4B 4C 4D 4F 01 34 12 50 51 52 53 54 55 57 58 59 5A 5B 5C 5D 5F 60 61 62 63 64 65 67 68 69 6A 6B 6C 6D 6F 11 78 56 21 BC 9A 78 79 7A 7B 7C 7D 7F 00 06 FE 16 DC 26 BA 0E 89 1E 67 2E 45 00 18 FD",
+    "length": 0,
+    "startaddr": 0,
+    "id": 0
+  },
+  {
+    "loadaddr": 0,
+    "fname": "TESTLD2.BIN",
+    "filetype": 2,
+    "data": "00 C3 0A 00 BC DE 81 AF 5A 69 01 04 00 11 05 00 21 06 00 0A 1A 3A 07 00 02 12 32 08 00 22 05 00 21 08 00 70 71 72 73 74 75 77 36 73 46 56 4E 5E E5 6E 66 2A 01 00 E1 7E ED 43 04 00 ED 53 06 00 ED 63 08 00 ED 73 05 00 ED 4B 04 00 ED 5B 06 00 ED 6B 08 00 ED 7B 07 00 00 18 FD",
+    "length": 0,
+    "startaddr": 0,
+    "id": 0
+  },
+  {
+    "loadaddr": 0,
+    "fname": "TESTEX.BIN",
+    "filetype": 2,
+    "data": "3E AA ED 47 01 BC CB 11 DE ED 21 17 71 08 3E 99 08 D9 01 12 34 11 45 67 21 89 AB EB 08 D9 C5 D5 E5 F5 E3 01 98 74 11 56 32 21 15 59 3E A3 F1 E1 D1 C1 ED 4F ED 57 ED 5F 00 18 FD",
+    "length": 0,
+    "startaddr": 0,
+    "id": 0
+  },
+  {
+    "loadaddr": 0,
+    "fname": "NOP.BIN",
+    "filetype": 2,
+    "data": "00",
+    "length": 0,
+    "startaddr": 0,
+    "id": 0
+  }
+]
