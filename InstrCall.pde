@@ -82,8 +82,8 @@ class InstrCall extends InstrBSRT {
     }
     this.comment = "Condition = " + testresult;
   }
-  
-    // -----------------------------------------------------------------------------------------------------
+
+  // -----------------------------------------------------------------------------------------------------
   void RSTp (int p) {
     int val16 = (0x00 << 8) + ((p & 0x07) << 3);
     this.asmInstr = "RST " + this.hex2(val16); // "hex2" volontaire 
@@ -113,6 +113,4 @@ class InstrCall extends InstrBSRT {
     this.reg.setPC(pc);
     this.comment = "RETurn from Non-Maskable-Interrupt, go back to " + this.hex4(pc);
   }
-
-
 }

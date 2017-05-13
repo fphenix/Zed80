@@ -22,6 +22,7 @@ void setup () {
     cpc.turnon();
     cpc.setSpeed(1);
     cpc.step();
+    cpc.setFrameModulo(1);
   } else if (boot) {
     cpc = new CPC();
     log.logModeON();
@@ -32,6 +33,7 @@ void setup () {
     //cpc.hideDebugWindow();
     cpc.turnon();
     cpc.setSpeed(500);
+    cpc.setFrameModulo(500);
   } else {
     cpc = new CPC(false);
     log.logModeON();
@@ -41,7 +43,8 @@ void setup () {
     //cpc.setBKP(0x04F7); // on
     cpc.setReg(0xB0, 0xFF, 0x00, 0x40, 0xAB, 0xFF, 0xFF, 0x80);
     cpc.turnon();
-    cpc.setSpeed(500);
+    cpc.setSpeed(200);
+    cpc.setFrameModulo(500);
   }
   background(0);
 }
@@ -58,7 +61,7 @@ void end () {
 
 void mouseClicked() {
   cpc.step();
-  log.logFlush(); // Writes the remaining data to the file
+  //log.logFlush(); // Writes the remaining data to the file
 }
 
 void keyPressed() {

@@ -1,7 +1,7 @@
 // Used by Class Opcodes
 
 public class Instruction extends InstrLD8 {
-  
+
   Instruction () {
     this.opcode = "";
     this.NOP();

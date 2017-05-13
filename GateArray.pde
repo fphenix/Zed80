@@ -11,6 +11,8 @@ class GateArray {
   int pixIndex;
   int cpcWidth;
   int cpcHeight;
+  int frame;
+  int frameModulo;
 
   int borderColor = color(0, 32, 0);
 
@@ -49,6 +51,8 @@ class GateArray {
 
     this.videoAddr = 0xC000;
     this.initColor();
+    this.frame = 0;
+    this.frameModulo = 1;
 
     screen = createImage(1, 1, RGB);
     this.setMode(1);
@@ -124,6 +128,10 @@ class GateArray {
   }
 
   //===================================================================================
+
+  void setFrameMod (int m) {
+    this.frameModulo = m;
+  }
 
   void setInstr (String si) {
     this.instr = si;
@@ -202,23 +210,28 @@ class GateArray {
 
   // =================================================================================
 
-  int calcPixIndex (int x, int y) {
-    return (x + (y * this.nbcolfullscreen));
-  }
-
   void display () {
     //this.showFullScreen ();
-    this.screen.loadPixels();
-    this.showScreen();
-    this.screen.updatePixels();
-    pushMatrix();
-    translate(this.xpad, this.ypad);
-    scale(this.xscl, this.yscl);
-    image(this.screen, 0, 0);
-    popMatrix();
-    if (this.dbg.showDebug) {
-      this.dbg.showDebugScreen();
+    if ((this.frame % this.frameModulo) == 0) {
+      this.screen.loadPixels();
+      this.showScreen();
+      this.screen.updatePixels();
+      pushMatrix();
+      translate(this.xpad, this.ypad);
+      scale(this.xscl, this.yscl);
+      image(this.screen, 0, 0);
+      popMatrix();
+      if (this.dbg.showDebug) {
+        this.dbg.showDebugScreen();
+      }
     }
+    this.frame++;
+  }
+
+  // =================================================================================
+
+  int calcPixIndex (int x, int y) {
+    return (x + (y * this.nbcolfullscreen));
   }
 
   void showFullScreen () {

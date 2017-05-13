@@ -7,7 +7,7 @@ class Z80 {
 
   Firmware fwv; // ref
   Memory mem; // Ref
-  
+
   // RAM ram; // ref
   // ROM rom; // ref
 
@@ -61,9 +61,9 @@ class Z80 {
     if (!this.halted) {
       this.update();
       this.pc = this.reg.specialReg[this.reg.PCpos];
-       // fetch the next 4 bytes at every new PC
-       // (not all of them will be used, but up to all of them can be usefull for one instruction),
-       for (int i = 0; i < this.fetch; i++) {
+      // fetch the next 4 bytes at every new PC
+      // (not all of them will be used, but up to all of them can be usefull for one instruction),
+      for (int i = 0; i < this.fetch; i++) {
         this.opcodeBytes[i] = this.mem.peek(pc + i);
       }
       this.opcode.OpCodeSel(this.opcodeBytes);

@@ -212,7 +212,7 @@ class Pinout {
     int sel = (this.ADDR & 0x0300) >> 8 ;
     switch (sel) {
     case 0: // 0xF4, Port A Data (PSG, Keyboard/Joystick), RW
-    this.selRegInfo = "PPI Port A Data";
+      this.selRegInfo = "PPI Port A Data";
       if (this.WR_b == 0) { // Write
         this.currPortAdata = this.DATA;
       } else {
@@ -220,7 +220,7 @@ class Pinout {
       }
       break;
     case 1: // 0xF5, VSYNC, etc, RW
-    this.selRegInfo = "PPI VSYNC, etc";
+      this.selRegInfo = "PPI VSYNC, etc";
       // b7: CAS_IN
       // b6: PRN.BUSY
       // b5: /EXP
@@ -233,7 +233,7 @@ class Pinout {
       }
       break;
     case 2: // 0xF6, PSG, Cassette, Keyboard, RW
-    this.selRegInfo = "PPI PSG, Cassette, Keyboard";
+      this.selRegInfo = "PPI PSG, Cassette, Keyboard";
       if (this.RD_b == 0) { // Read
         this.DATA = this.currPortCdata;
       } else { // Write
@@ -241,7 +241,7 @@ class Pinout {
       }
       break;
     default:  // 0xF7, PPI Control W-Only
-    this.selRegInfo = "PPI Control";
+      this.selRegInfo = "PPI Control";
       if (this.RD_b == 0) { // Read?
         return;
       }

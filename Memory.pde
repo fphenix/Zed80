@@ -45,10 +45,10 @@ class Memory {
     // if ROM paging selected for UpperROM, then read from the chosen Page (upperROMsel)
     if (this.isInRange(a, 0xC000, 0xFFFF) && this.upperROMpaging) {
       return (this.uproms[this.upperROMsel].data[this.addr & 0x3FFF] & 0xFF);
-    // if ROM paging selected for LowerROM, then read from it
+      // if ROM paging selected for LowerROM, then read from it
     } else if (this.isInRange(a, 0x0000, 0x3FFF) && this.lowerROMpaging) {
       return (this.lorom.data[this.addr & 0x3FFF] & 0xFF);
-    // in any other case read the RAM
+      // in any other case read the RAM
     } else {
       return (this.ram.data[this.addr] & 0xFF);
     }
@@ -78,9 +78,9 @@ class Memory {
     this.upperROMpaging = true;
     this.upperROMsel = 0;
     /*for (int i = 0; i < 0x40; i++) {
-      // copy the RST table from AMSDOS to RAM
-      this.poke(i, this.rompeek(3, 7, i));
-    }*/
+     // copy the RST table from AMSDOS to RAM
+     this.poke(i, this.rompeek(3, 7, i));
+     }*/
   }
 
   void memDump () {
@@ -153,34 +153,34 @@ class Memory {
     return (a % 0x4000);
   }
 
-/*
+  /*
  ;This register exists only in CPCs with 128K RAM (like the CPC 6128, 
- ;or CPCs with Standard Memory Expansions). 
- ;Note: In the CPC 6128, the register is a separate PAL that assists 
- ;the Gate Array chip.
- ;The 3bit RAM Config value is used to access the total of 128K RAM 
- ;(RAM Banks 0-7) that is built into the CPC 6128. Normally the register 
- ;is set to 0, so that only the first 64K RAM are used (identical to the
- ;CPC 464 and 664 models). The register can be used to select between the 
- ;following eight predefined configurations only:
-    // conf : banks
-    // 0 : 0 1 2 3  ** DEFAULT; 464 Mode
-    // 1 : 0 1 2 7
-    // 2 : 4 5 6 7
-    // 3 : 0 3 2 7
-    // 4 : 0 4 2 3
-    // 5 : 0 5 2 3
-    // 6 : 0 6 2 3
-    // 7 : 0 7 2 3
-    // Note: CRTC only displays from primary RAM
- // Memory range (64 kB blocks of RAM selected, divided in 4 sub-blocks of 16KB): 
-  // 0x0000 to 0x3FFF
-  // 0x4000 to 0x7FFF
-  // 0x8000 to 0xBFFF
-  // 0xC000 to 0xFFFF
-  // blocks 0 to 3 : within the primary selected RAM block
-  // blocks 4 to 7 : within the secondary selected RAM block
-  */
+   ;or CPCs with Standard Memory Expansions). 
+   ;Note: In the CPC 6128, the register is a separate PAL that assists 
+   ;the Gate Array chip.
+   ;The 3bit RAM Config value is used to access the total of 128K RAM 
+   ;(RAM Banks 0-7) that is built into the CPC 6128. Normally the register 
+   ;is set to 0, so that only the first 64K RAM are used (identical to the
+   ;CPC 464 and 664 models). The register can be used to select between the 
+   ;following eight predefined configurations only:
+   // conf : banks
+   // 0 : 0 1 2 3  ** DEFAULT; 464 Mode
+   // 1 : 0 1 2 7
+   // 2 : 4 5 6 7
+   // 3 : 0 3 2 7
+   // 4 : 0 4 2 3
+   // 5 : 0 5 2 3
+   // 6 : 0 6 2 3
+   // 7 : 0 7 2 3
+   // Note: CRTC only displays from primary RAM
+   // Memory range (64 kB blocks of RAM selected, divided in 4 sub-blocks of 16KB): 
+   // 0x0000 to 0x3FFF
+   // 0x4000 to 0x7FFF
+   // 0x8000 to 0xBFFF
+   // 0xC000 to 0xFFFF
+   // blocks 0 to 3 : within the primary selected RAM block
+   // blocks 4 to 7 : within the secondary selected RAM block
+   */
   void selExtRAMConfig (int page, int s, int bank) {
   }
 

@@ -15,5 +15,4 @@ class Keyboard {
     // Row 8  : K1, K2, KESC, KQ, KTAB, KA, KCAPSLOCK, KZ,
     // Row 9  : K_, K_, K_, K_, K_, K_, K_, KBCKSPC
   }
-
 }

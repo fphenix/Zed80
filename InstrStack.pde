@@ -67,5 +67,4 @@ class InstrStack extends InstrJmp {
     this.setReg16Val(this.reg.IXpos + ixy, val16);
     this.comment = "POP Value " + this.hex4(val16);
   }
-  
 }

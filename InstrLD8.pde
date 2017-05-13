@@ -129,7 +129,7 @@ class InstrLD8 extends InstrLD16 {
     int mem16 = this.getReg16Val(this.reg.IXpos + ixy) + displacement;
     int val8 = this.getRegVal(r);
     this.putInPointer(mem16, val8);
-     this.comment = "Value = " + this.hex2(val8);
+    this.comment = "Value = " + this.hex2(val8);
     this.comment += "; displacement = " + sign + abs(displacement);
   }
 

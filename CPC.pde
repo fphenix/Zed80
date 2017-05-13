@@ -14,7 +14,7 @@ class CPC {
   boolean stepForward;
   boolean freerun;
   boolean bootup = true;
-  
+
   CPC () {
     this.init(true);
   }
@@ -22,7 +22,7 @@ class CPC {
   CPC (boolean boot) {
     this.init(boot);
   }
-  
+
   void init (boolean boot) {
     this.bootup = boot;
     this.stepForward = false;
@@ -55,7 +55,6 @@ class CPC {
     //this.diskette.loadFile("HEADOVER.III", this.ram);
 
     this.mem.romDump();
-    log.logln("PCaddr : Opcodes     : Assembly              ; SZ-H-PNC ; Comment");
   }
 
   void setReg(int b, int c, int d, int e, int h, int l, int a, int f) {
@@ -77,10 +76,14 @@ class CPC {
     this.speed = (sp < 1) ? 1 : sp;
   }
 
+  void setFrameModulo (int m) {
+    this.ga.setFrameMod(m);
+  }
+
   void setShowingDebugMem (int m) {
     this.ga.dbg.setShowingMem(m);
   }
-  
+
   void setBKP (int breakpoint) {
     this.z80.reg.setBKP(breakpoint & 0xFFFF);
     this.z80.reg.setBKPOn();
@@ -96,6 +99,7 @@ class CPC {
 
   void turnon () {
     this.z80.go();
+    log.logln("PCADDR : OPCODES     : DISASM                ; SZ-H-PNC ; PC  |SP  |B C |D E |H L |A F |I R |IX  |IY    ; Comment");
   }
 
   void halt () {
@@ -129,9 +133,7 @@ class CPC {
         noLoop();
         break;
       }
-      if ((this.speed > 1) && ((this.iter % 20) == 0)) {
-        this.ga.display();
-      }
+      this.ga.display();
       if ((this.z80.reg.breakMode) && (this.z80.reg.breakPoint == this.z80.pc)) {
         println("Break Point at 0x" + hex(this.z80.pc, 4));
         this.mem.memDump();

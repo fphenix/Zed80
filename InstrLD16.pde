@@ -145,7 +145,7 @@ class InstrLD16 extends InstrAL8 {
     this.setPMTRpCycles(4, 6, 20, 2, 2);
     this.put16InPointer(mem16, val16);
     this.comment = "Value " + this.hex4(val16);
-   }
+  }
 
   // -----------------------------------------------------------------------------------------------------
   void LDSPHL () {
@@ -165,5 +165,4 @@ class InstrLD16 extends InstrAL8 {
     this.reg.specialReg[this.reg.SPpos] = val16;
     this.comment = "";
   }
-
 }

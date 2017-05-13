@@ -145,7 +145,7 @@ class Registers {
   int readFlagByte () {
     return this.reg8b[this.Fpos];
   }
-  
+
   //  Flags: SZ-H-PNC
   String printFlags () {
     String str = "";
@@ -224,14 +224,11 @@ class Registers {
     this.update();
     String str = "";
     for (int i = this.PCpos; i <= this.SPpos; i++) {
-        str += hex(this.specialReg[i], 4) + "|";
-      
+      str += hex(this.specialReg[i], 4) + "|";
     }
     for (int i = this.BCpos; i <= this.IYpos; i++) {
-        str += hex(this.reg16b[i], 4) + "|";
-      
+      str += hex(this.reg16b[i], 4) + "|";
     }
     return str;
   }
-
 }

@@ -29,7 +29,7 @@ class Cycles {
   int getR () {
     return this.R;
   }
-  
+
   void setR (int r) {
     this.R = r & 0xFF;
   }

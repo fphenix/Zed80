@@ -2,6 +2,7 @@ class Log {
   PrintWriter log;
   String logname;
   boolean mode; // on (true) or off (false)
+  int lines;
 
   // ********************************************************************
   Log () {
@@ -15,6 +16,7 @@ class Log {
   void construct(String lname) {
     this.logname = lname;
     this.log = createWriter("data/" + lname); // Create a new file in the sketch directory
+    this.lines = 0;
   }
 
   // ********************************************************************
@@ -34,6 +36,10 @@ class Log {
   void logln (String str) {
     if (this.mode) {
       this.log.println(str);
+      this.lines++;
+      if ((this.lines % 10) == 0) {
+        this.logFlush();
+      }
     }
   }
 

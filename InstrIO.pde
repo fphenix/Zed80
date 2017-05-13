@@ -104,61 +104,60 @@ class InstrIO extends InstrWrap {
     this.comment += ", DATA = " + hex2(val8);
     this.comment += "; " + this.pin.IOselInfo(adr16);
   }
-  
+
   // -----------------------------------------------------------------------------------------------------
   void INI () {
     this.asmInstr = "INI";
     this.setPMTRpCycles(2, 4, 16, 2, 0);
     this.comment = "Not supported!";
   } 
-  
+
   // -----------------------------------------------------------------------------------------------------
   void INIR () {
     this.asmInstr = "INIR";
     this.setPMTRpCycles(2, 5, 21, 2, 0);
     this.comment = "Not supported!";
   } 
-  
+
   // -----------------------------------------------------------------------------------------------------
   void IND () {
     this.asmInstr = "IND";
     this.setPMTRpCycles(2, 4, 16, 2, 0);
     this.comment = "Not supported!";
   } 
-  
+
   // -----------------------------------------------------------------------------------------------------
   void INDR () {
     this.asmInstr = "INDR";
     this.setPMTRpCycles(2, 5, 21, 2, 0);
     this.comment = "Not supported!";
   } 
-  
+
   // -----------------------------------------------------------------------------------------------------
   void OUTI () {
     this.asmInstr = "OUTI";
     this.setPMTRpCycles(2, 4, 16, 2, 0);
     this.comment = "Not supported!";
   } 
-  
+
   // -----------------------------------------------------------------------------------------------------
   void OTIR () {
     this.asmInstr = "OTIR";
     this.setPMTRpCycles(2, 5, 21, 2, 0);
     this.comment = "Not supported!";
   } 
-  
+
   // -----------------------------------------------------------------------------------------------------
   void OUTD () {
     this.asmInstr = "OUTD";
     this.setPMTRpCycles(2, 4, 16, 2, 0);
     this.comment = "Not supported!";
   } 
-  
+
   // -----------------------------------------------------------------------------------------------------
   void OTDR () {
     this.asmInstr = "OTDR";
     this.setPMTRpCycles(2, 5, 21, 2, 0);
     this.comment = "Not supported!";
-  } 
-  
+  }
 }
