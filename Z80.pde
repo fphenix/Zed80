@@ -67,6 +67,7 @@ class Z80 {
         this.opcodeBytes[i] = this.mem.peek(pc + i);
       }
       this.opcode.OpCodeSel(this.opcodeBytes);
+      this.interruptReq(this.opcodeBytes[0]);
     }
   }
 
@@ -99,7 +100,9 @@ class Z80 {
       this.reg.specialReg[this.reg.PCpos] = addr;
       break;
     default : // IM 1
+    log.logln("Interruption RST 0x38");
       this.opcode.instr.RSTp(7);
     }
+    this.interruptPending = false;
   }
 }

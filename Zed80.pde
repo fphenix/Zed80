@@ -2,6 +2,7 @@ CPC cpc; //<>// //<>//
 Log log;
 
 boolean boot = false;
+//boolean runp = true;
 boolean test = false;
 
 void setup () {
@@ -35,7 +36,7 @@ void setup () {
     cpc.setSpeed(500);
     cpc.setFrameModulo(500);
   } else {
-    cpc = new CPC(false);
+    cpc = new CPC(boot);
     log.logModeON();
     cpc.setPC(0xBEA7);
     cpc.setSP(0xBFFA);

@@ -63,8 +63,8 @@ class GateArray {
   int blinkSpeed;
   int dispAddr;
   int dispBufferSize; // 32 or 16 KB
-  int cursorStartAddr;
-  int lightpenStartAddr;
+  int cursorAddr;
+  int lightpenAddr;
 
   Z80 z80;       // reference
   Registers reg; // reference
@@ -131,7 +131,6 @@ class GateArray {
     screen.loadPixels();
   }
 
-//  int[] CRTCreg = {63, 40, 46, 142, 38, 0, 25, 30, 0, 7, 0, 0, 0x30, 0, 0, 0, 0, 0};
   void calcScreenSize () {
     this.yscl = 1.0 * this.mainscl;
     this.lines = this.CRTCreg[this.regVerticDispChar]; // 25 in Char
@@ -161,29 +160,37 @@ class GateArray {
     this.xpad = floor((this.cpcWidth - (this.dbg.xdebug + (this.nbcolfullscreen * this.xscl))) / 3.0); 
     this.ypad = floor((this.cpcHeight - (this.nbrowfullscreen * this.yscl)) / 2.0);
     this.borderxsize = floor((this.nbcolfullscreen - this.nbcol) / 2.0);
-    this.borderysize = floor((this.nbrowfullscreen - this.nbrow) / 2.0);
+    this.borderysize = floor((this.CRTCreg[this.regVerticSyncPosChar] - this.lines) * this.charSize / 2); // floor((this.nbrowfullscreen - this.nbrow) / 2.0);
   }
 
   void decodeReg () {
     this.charSize = (this.CRTCreg[this.regMaxRasterAddr] & 0x07) + 1;
+
     this.HSyncWidth = this.CRTCreg[this.regHorizSyncWidth] & 0x0F;
     this.VSyncWidth = 16; // lines ???
+
     this.interlace = this.CRTCreg[this.regInterlaceSkew] & 0x03;
     this.maxRasterAddr = this.CRTCreg[this.regMaxRasterAddr] & 0x07;
+
     this.blinkOnOff = (this.CRTCreg[this.regBlink] & 0x40) >> 6;
     this.blinkSpeed = (this.CRTCreg[this.regBlink] & 0x20) >> 5;
-    int reg12 = this.CRTCreg[this.regDispStartAddrHigh];
-    int reg13 = this.CRTCreg[this.regDispStartAddrLow];
-    int dispAddrBase = (reg12 & 0x30) << (2 + 8); // 0010_000
-    int dispAddrOffset = ((reg12 & 0x03) << 8) + reg13;
-    this.dispAddr = dispAddrBase + dispAddrOffset;
-    this.dispBufferSize = (((reg12 & 0x0C) >> 2) == 0x03) ? 32 : 16; // 32 or 16 KB
-    this.cursorStartAddr = ((this.CRTCreg[this.regCursorStartAddrHigh] & 0x3F) << 8) + this.CRTCreg[this.regCursorStartAddrLow];
-    this.lightpenStartAddr = ((this.CRTCreg[this.regLightPenStartAddrHigh] & 0x3F) << 8) + this.CRTCreg[this.regLightPenStartAddrLow];
+
+    int regh = this.CRTCreg[this.regDispStartAddrHigh];
+    int regl = this.CRTCreg[this.regDispStartAddrLow];
+    int addrBase = (regh & 0x30) << (2 + 8); // 0010_000
+    int addrOffset = ((regh & 0x03) << 8) + regl;
+    this.dispAddr = addrBase + addrOffset;
+    this.dispBufferSize = (((regh & 0x0C) >> 2) == 0x03) ? 32 : 16; // 32 or 16 KB
+
+    regh = this.CRTCreg[this.regCursorStartAddrHigh];
+    regl = this.CRTCreg[this.regCursorStartAddrLow];
+    addrBase = (regh & 0x30) << (2 + 8);
+    addrOffset = ((regh & 0x03) << 8) + regl;
+    this.cursorAddr = addrBase + addrOffset;
+
+    //this.lightpenAddr = same than cursor; // not supported
     this.calcScreenSize();
     this.videoAddr = this.dispAddr;
-    println(hex(this.dispAddr,4));
-    // (R9+1)*R6 = nb pix vertic
   }
 
   //===================================================================================
@@ -320,6 +327,11 @@ class GateArray {
           screen.pixels[pIdx] = this.getPenColor(pixval);
         } else {
           screen.pixels[pIdx] = this.getBorderColor();
+        }
+        this.interruptLineCount++;
+        if (this.interruptLineCount == 52) {
+          this.interruptLineCount = 0;
+          this.z80.interruptPending = true;
         }
       }
     }
@@ -652,26 +664,6 @@ class GateArray {
     int byteval = this.mem.peek(byteaddr);
     this.mem.poke(byteaddr, this.setPixValInByte(byteval, pixnb, this.clampPixVal(pixval)));
   }
-
-  // ====================================================================
-  /*
-  void hSyncStart () {
-   this.hSyncCnt = 0;
-   this.interruptLineCount = 0;
-   }
-   
-   void hSyncInc () {
-   this.interruptLineCount++;
-   }
-   
-   void hSyncEnd () {
-   if (this.interruptLineCount == 52) {
-   this.interruptLineCount = 0;
-   this.z80.interruptPending = true;
-   //if (this.intDivRMR) ...
-   }
-   }
-   */
 
   // ====================================================================
   String hex2 (int val8) {
