@@ -1,4 +1,4 @@
-/*############################################################### //<>//
+/*############################################################### //<>// //<>// //<>//
  #
  # General-Purpose Arithmetic and CPU Control Group
  #
@@ -241,9 +241,10 @@ public class InstrGPACC extends InstrIO {
 
   // -----------------------------------------------------------------------------------------------------
   void IMm (int m) {
-    this.asmInstr = "IM " + m;
+    int intm = (m < 0) ? 0 : (m > 2) ? 2 : m;
+    this.asmInstr = "IM " + intm;
     this.setPMTRpCycles(2, 2, 8, 1, 0);
-    this.comment = "Set Interrupt Mode " + m;
-    this.reg.IM = m & 0x03;
+    this.comment = "Set Interrupt Mode " + intm;
+    this.reg.IM = intm;
   }
 }

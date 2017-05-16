@@ -18,13 +18,53 @@ class GateArray {
 
   float xscl, yscl;
   int lines, columns;
-  final int nbrow = 200;
-  final int nbrowfullscreen = 272;
+  int nbrow;
+  int nbrowfullscreen;
   int nbcol;
   int nbcolfullscreen;
   int borderxsize, borderysize;
   float xpad, ypad;
   final float mainscl = 2.0;
+
+  boolean intDivRMR;
+  int interruptLineCount;
+  int hSyncCnt = 0;
+  int sigDISPTMG = 0; // '1' if in BORDER color
+  int sigBLACK = 0; // '1' if HSYNC/VSYNC active to 'display' a true black/no color
+  int charSize = 8;
+
+  // CRTC registers 0 to 17
+  final int regHorizTotChar = 0;
+  final int regHorizDispChar = 1; // when horiz char count equals this reg then DISPTMG set to 1
+  final int regHorizSyncPosChar = 2; // start of HSync sig
+  final int regHorizSyncWidth = 3;
+  final int regVerticTotChar = 4;
+  final int regVerticAdjust = 5; // in scan line
+  final int regVerticDispChar = 6; // when vertic char count equals this reg, then DISPRMG set to 1
+  final int regVerticSyncPosChar = 7; // start of VSync sig
+  final int regInterlaceSkew = 8;
+  final int regMaxRasterAddr = 9;
+  final int regBlink = 10;
+  final int regCursorPos = 11;
+  final int regDispStartAddrHigh = 12;
+  final int regDispStartAddrLow = 13;
+  final int regCursorStartAddrHigh = 14;
+  final int regCursorStartAddrLow = 15;
+  final int regLightPenStartAddrHigh = 16; // read only
+  final int regLightPenStartAddrLow = 17; // read only
+  String[] CRTCregNames = {"HTotChar", "HDispChar", "HSyncPos", "H_V_Sync_Width (VVVVHHHH)", "VTotChar", "VAdjust", "VDispChar", "VSyncPos", "Interlace and Skew", "MaxRasterAddr", "BlinkOnOff (b6) and Speed (b5)", "CursorEndRaster", "DispStartAddrHigh", "DispStartAddrLow", "CursorAddrHigh", "CursorAddrLow", "LightPenAddrHigh", "LightPenAddrLow"};
+  int[] CRTCreg = {63, 40, 46, 142, 38, 0, 25, 30, 0, 7, 0, 0, 0x30, 0, 0, 0, 0, 0};
+
+  int HSyncWidth;
+  int VSyncWidth = 16; // lines ???
+  int interlace;
+  int maxRasterAddr;
+  int blinkOnOff;
+  int blinkSpeed;
+  int dispAddr;
+  int dispBufferSize; // 32 or 16 KB
+  int cursorStartAddr;
+  int lightpenStartAddr;
 
   Z80 z80;       // reference
   Registers reg; // reference
@@ -49,13 +89,13 @@ class GateArray {
     this.dbg = new DebugWindow(shwdbg);
     this.dbg.setRef(this);
 
-    this.videoAddr = 0xC000;
     this.initColor();
     this.frame = 0;
     this.frameModulo = 1;
 
     screen = createImage(1, 1, RGB);
     this.setMode(1);
+    this.intDivRMR = false;
   }
 
   void setRef(Z80 ref, Memory memref, Firmware fwvref) {
@@ -76,44 +116,8 @@ class GateArray {
     this.borderAlt = 1;
   }
 
-  void calcScreenSize () {
-    this.yscl = 1.0 * this.mainscl;
-    this.lines = 25;
-    switch (this.mode) {
-    case 0:
-      this.xscl = 2.0 * this.yscl;
-      this.nbcol = 160;
-      this.nbcolfullscreen = 192;
-      this.columns = 20;
-      break;
-    case 2:
-      this.xscl = 0.5 * this.yscl;
-      this.nbcol = 640;
-      this.nbcolfullscreen = 768;
-      this.columns = 80;
-      break;
-    case 3:
-      this.xscl = 2.0 * this.yscl;
-      this.nbcol = 160;
-      this.nbcolfullscreen = 192;
-      this.columns = 20;
-      break;
-    default:
-      this.xscl = 1.0 * this.yscl;
-      this.nbcol = 320;
-      this.nbcolfullscreen = 384;
-      this.columns = 40;
-      break;
-    }
-    this.xpad = floor((this.cpcWidth - (this.dbg.xdebug + (this.nbcolfullscreen * this.xscl))) / 3.0); 
-    this.ypad = floor((this.cpcHeight - (this.nbrowfullscreen * this.yscl)) / 2.0);
-    this.borderxsize = floor((this.nbcolfullscreen - this.nbcol) / 2.0);
-    this.borderysize = floor((this.nbrowfullscreen - this.nbrow) / 2.0);
-  }
-
   void init () {
     this.cpcHeight = height;
-
     if (this.dbg.showDebug) {
       this.cpcWidth = 1100;
       this.dbg.xdebug = 300;
@@ -121,10 +125,65 @@ class GateArray {
       this.cpcWidth = 790;
       this.dbg.xdebug = 0;
     }
-    this.calcScreenSize();
+    this.decodeReg();
     surface.setSize(this.cpcWidth, this.cpcHeight);
     screen.resize(this.nbcolfullscreen, this.nbrowfullscreen);
     screen.loadPixels();
+  }
+
+//  int[] CRTCreg = {63, 40, 46, 142, 38, 0, 25, 30, 0, 7, 0, 0, 0x30, 0, 0, 0, 0, 0};
+  void calcScreenSize () {
+    this.yscl = 1.0 * this.mainscl;
+    this.lines = this.CRTCreg[this.regVerticDispChar]; // 25 in Char
+    this.nbrow = this.lines * this.charSize; // 200 = 25 * 8
+    this.nbrowfullscreen = 272;
+
+    //Mode 1:
+    this.xscl = 1.0 * this.yscl;
+    this.columns = this.CRTCreg[this.regHorizDispChar]; // 40 in Char
+    this.nbcol = this.columns * this.charSize; // 320 = 40 * 8
+    this.nbcolfullscreen = 384; 
+
+    //Mode 0 ou 3:
+    if ((this.mode == 0) || (this.mode == 3)) {
+      this.xscl *= 2.0;
+      this.columns /= 2; // 20 in Char
+      this.nbcol /= 2; // 160 = 20char * 8pixPerChar
+      this.nbcolfullscreen /= 2; // 192
+      //Mode 2:
+    } else if (this.mode == 2) {
+      this.xscl /= 2.0;
+      this.columns *= 2; // 80 in Char
+      this.nbcol *= 2; // 640 = 80 * 8
+      this.nbcolfullscreen *= 2; // 768
+    }
+
+    this.xpad = floor((this.cpcWidth - (this.dbg.xdebug + (this.nbcolfullscreen * this.xscl))) / 3.0); 
+    this.ypad = floor((this.cpcHeight - (this.nbrowfullscreen * this.yscl)) / 2.0);
+    this.borderxsize = floor((this.nbcolfullscreen - this.nbcol) / 2.0);
+    this.borderysize = floor((this.nbrowfullscreen - this.nbrow) / 2.0);
+  }
+
+  void decodeReg () {
+    this.charSize = (this.CRTCreg[this.regMaxRasterAddr] & 0x07) + 1;
+    this.HSyncWidth = this.CRTCreg[this.regHorizSyncWidth] & 0x0F;
+    this.VSyncWidth = 16; // lines ???
+    this.interlace = this.CRTCreg[this.regInterlaceSkew] & 0x03;
+    this.maxRasterAddr = this.CRTCreg[this.regMaxRasterAddr] & 0x07;
+    this.blinkOnOff = (this.CRTCreg[this.regBlink] & 0x40) >> 6;
+    this.blinkSpeed = (this.CRTCreg[this.regBlink] & 0x20) >> 5;
+    int reg12 = this.CRTCreg[this.regDispStartAddrHigh];
+    int reg13 = this.CRTCreg[this.regDispStartAddrLow];
+    int dispAddrBase = (reg12 & 0x30) << (2 + 8); // 0010_000
+    int dispAddrOffset = ((reg12 & 0x03) << 8) + reg13;
+    this.dispAddr = dispAddrBase + dispAddrOffset;
+    this.dispBufferSize = (((reg12 & 0x0C) >> 2) == 0x03) ? 32 : 16; // 32 or 16 KB
+    this.cursorStartAddr = ((this.CRTCreg[this.regCursorStartAddrHigh] & 0x3F) << 8) + this.CRTCreg[this.regCursorStartAddrLow];
+    this.lightpenStartAddr = ((this.CRTCreg[this.regLightPenStartAddrHigh] & 0x3F) << 8) + this.CRTCreg[this.regLightPenStartAddrLow];
+    this.calcScreenSize();
+    this.videoAddr = this.dispAddr;
+    println(hex(this.dispAddr,4));
+    // (R9+1)*R6 = nb pix vertic
   }
 
   //===================================================================================
@@ -266,7 +325,8 @@ class GateArray {
     }
   }
 
-  // Firmware color number => RGB color
+  // Transform the Hardware (GateArray) color number to the
+  // Firmware (Basic/Software) color number and finally to the RGB color
   int colorHardware2Color (int hw) {
     return this.colorPalette(this.colorHardware2Firmware(hw));
   }
@@ -275,7 +335,7 @@ class GateArray {
   int colorPalette (int ink) {
     switch (ink) {
     case 0 : 
-      return #000000;
+      return #050505;
     case 1 : 
       return #000080;
     case 2 : 
@@ -333,66 +393,67 @@ class GateArray {
     }
   }
 
-  int colorHardware2Firmware (int hw) {
-    switch (hw) {
-    case 0x54 : 
+  int colorHardware2Firmware (int hwcolor) {
+    // Pour obtenir la valeur a OUTer, hwcolor + 0x40;
+    switch (hwcolor) {
+    case 0x14 : // n° 20  - 01_0_10100
       return 0;
-    case 0x44 : 
-    case 0x50 : 
+    case 0x04 : // n° 4
+    case 0x10 : // n° 16
       return 1;
-    case 0x55 : 
+    case 0x15 : // n° 21
       return 2;
-    case 0x5C : 
+    case 0x1C : // n° 28
       return 3;
-    case 0x58 : 
+    case 0x18 : // n° 24
       return 4;
-    case 0x5D : 
+    case 0x1D : // n° 29
       return 5;
-    case 0x4C : 
+    case 0x0C : // n° 12
       return 6;
-    case 0x45 : 
-    case 0x48 : 
+    case 0x05 : // n° 5
+    case 0x08 : // n° 8
       return 7;
-    case 0x4D : 
+    case 0x0D : // n° 13
       return 8;
-    case 0x56 : 
+    case 0x16 : // n° 22
       return 9;
-    case 0x46 : 
+    case 0x06 : // n° 6
       return 10;
-    case 0x57 : 
+    case 0x17 : // n° 23
       return 11;
-    case 0x5E : 
+    case 0x1E : // n° 30
       return 12;
-    case 0x40 : 
-    case 0x41 : 
+    case 0x00 : // n° 0
+    case 0x01 : // n° 1
       return 13;
-    case 0x5F : 
+    case 0x1F : // n° 31
       return 14;
-    case 0x4E : 
+    case 0x0E : // n° 14
       return 15;
-    case 0x47 : 
+    case 0x07 : // n° 7
       return 16;
-    case 0x4F : 
+    case 0x0F : // n° 15
       return 17;
-    case 0x52 : 
+    case 0x12 : // n° 18
       return 18;
-    case 0x42 : 
-    case 0x51 : 
+    case 0x02 : // n° 2
+    case 0x11 : // n° 17
       return 19;
-    case 0x53 : 
+    case 0x13 : // n° 19
       return 20;
-    case 0x5A : 
+    case 0x1A : // n° 26
       return 21;
-    case 0x59 : 
+    case 0x19 : // n° 25
       return 22;
-    case 0x5B : 
+    case 0x1B : // n° 27
       return 23;
-    case 0x4A : 
+    case 0x0A : // n° 10
       return 24;
-    case 0x43 : 
-    case 0x49 : 
+    case 0x03 : // n° 3
+    case 0x09 : // n° 9
       return 25;
-    case 0x4B : 
+    case 0x0B : // n° 11
       return 26;
     default : 
       return 0;
@@ -591,6 +652,26 @@ class GateArray {
     int byteval = this.mem.peek(byteaddr);
     this.mem.poke(byteaddr, this.setPixValInByte(byteval, pixnb, this.clampPixVal(pixval)));
   }
+
+  // ====================================================================
+  /*
+  void hSyncStart () {
+   this.hSyncCnt = 0;
+   this.interruptLineCount = 0;
+   }
+   
+   void hSyncInc () {
+   this.interruptLineCount++;
+   }
+   
+   void hSyncEnd () {
+   if (this.interruptLineCount == 52) {
+   this.interruptLineCount = 0;
+   this.z80.interruptPending = true;
+   //if (this.intDivRMR) ...
+   }
+   }
+   */
 
   // ====================================================================
   String hex2 (int val8) {

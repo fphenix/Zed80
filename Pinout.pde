@@ -88,41 +88,41 @@ class Pinout {
     }
     int cmd = (this.DATA & 0xC0) >> 6;
     switch (cmd) {
-    case 0: //PENR
-      this.currpen = (this.DATA & 0x1F);
+    case 0: //PENR: b[7:6] = b'00
+      this.currpen = (this.DATA & 0x1F); // si b4=1 then BORDER selected, else b[3:0]=PEN number
       this.selRegInfo = "GA reg : PENR";
       break;
-    case 1: // INKR
-      this.currink = (this.DATA & 0x1F);
+    case 1: // INKR: b[7:6] = b'01
+      this.currink = (this.DATA & 0x1F); // INK Hardware value = b[4:0]
       if (this.currpen < 0x10) {
-        this.ga.setPENHard(this.currpen, this.currink);
+        this.ga.setPENHard(this.currpen, this.currink); // assign PEN xx with INK yy
+        this.selRegInfo = "GA reg : INKR to PENR";
       } else {
-        this.ga.setBORDERHard(this.currink);
+        this.ga.setBORDERHard(this.currink); // if PENR bit 4 set, theb assign BORDER with INK yy
+        this.selRegInfo = "GA reg : INKR to BORDER";
       }
-      this.selRegInfo = "GA reg : INKR";
       break;
-    case 2: // RMR
+    case 2: // RMR: b[7:6] = b'10
       this.selRegInfo = "GA reg : RMR";
-      if ((this.DATA & 0x10) == 0x10) { // RMR bit4
-        println("GA RMR I register not yet supported");
-      }
+      this.ga.intDivRMR = ((this.DATA & 0x10) > 0); // RMR bit4 : reset de diviseur d'interruption si b4 = 1
+      this.selRegInfo += "; Reset du Div d'IRQ = " + this.ga.intDivRMR;
       if ((this.DATA & 0x08) == 0x00) { // RMR bit 3 = UpperROM paging enable (active low)
         this.mem.upperROMpaging = true;
-        this.selRegInfo += ": UpperROM paging enabled";
+        this.selRegInfo += "; UpperROM paging enabled";
       } else {
         this.mem.upperROMpaging = false;
-        this.selRegInfo += ": UpperROM paging disabled";
+        this.selRegInfo += "; UpperROM paging disabled";
       }
       if ((this.DATA & 0x04) == 0x00) { // RMR bit 2 = LowerROM paging enable (active low)
         this.mem.lowerROMpaging = true;
-        this.selRegInfo += ": LowerROM paging enabled";
+        this.selRegInfo += "; LowerROM paging enabled";
       } else {
         this.mem.lowerROMpaging = false;
-        this.selRegInfo += ": LowerROM paging disabled";
+        this.selRegInfo += "; LowerROM paging disabled";
       }
       int vm = this.DATA & 0x03;
       this.ga.setMode(vm); // RMR bits [1:0] = Video Mode
-      this.selRegInfo += ": Video Mode=" + vm;
+      this.selRegInfo += "; Video Mode=" + vm;
       break;
     default: // RAM/MMR 6128 Only (or extended RAM expansion)
       int page = (this.DATA & 0x38) >> 3;
@@ -133,8 +133,7 @@ class Pinout {
   }
 
   int currCRTCreg = 0;
-  int[] CRTCreg = {63, 40, 46, 142, 38, 0, 25, 30, 0, 7, 0, 0, 32, 0, 0, 0, 0, 0};
-  int CRTCStatusreg = 0;
+  int CRTCStatusreg = 0x00;
 
   void accessCRTCSel() {
     int sel = (this.ADDR & 0x0300) >> 8;
@@ -149,9 +148,13 @@ class Pinout {
     case 1: // 0xBDxx : W-only Data Reg
       this.selRegInfo = "CRTC Data reg";
       if (this.WR_b == 0) { // Write
-        if (this.currCRTCreg <= 15) {
-          this.CRTCreg[this.currCRTCreg] = this.DATA;
+        if (this.currCRTCreg == 3) {
+          this.ga.CRTCreg[this.currCRTCreg] = this.DATA & 0x0F; // nibble de poid fort (syncro V) seulement sur CRTC type 3 et 4 (CPC PLUS?) non supporté
+        } else if (this.currCRTCreg <= 15) {
+          this.ga.CRTCreg[this.currCRTCreg] = this.DATA;
         }
+        // else ignored
+        this.ga.decodeReg();
       }
       break;
     case 2: // 0xBExx : Depends on the CRTC version; R-only ; nothing on Type 0 and 2; Status on Type 1
@@ -164,9 +167,9 @@ class Pinout {
       this.selRegInfo = "CRTC Stat or Unused reg 2";
       if (this.RD_b == 0) { // Read
         if (this.currCRTCreg <= 17) {
-          this.DATA = this.CRTCreg[this.currCRTCreg];
+          this.DATA = this.ga.CRTCreg[this.currCRTCreg];
         } else {
-          this.DATA = 0x00;
+          this.DATA = 0x00; // Only CRTC Types 0 and 2 supported; On CRTC Type 1, reg[18 to 30] read as 0x00, reg 31 read as 0xFF...
         }
       }
     }

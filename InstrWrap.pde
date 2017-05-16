@@ -1,4 +1,4 @@
-/*================================================================= //<>//
+/*================================================================= //<>// //<>//
  =
  = Multiple Level Inheritance:
  =
@@ -262,16 +262,15 @@ class InstrWrap {
     }
   }
 
+  // Return the Half-Carry bit from the 2 input bytes that we want to add.
   int halfCarry (int a, int b) {
-    if ((((a & 0x0F) + (b & 0x0F)) & 0x10) > 0) {
-      return 1;
-    } else {
-      return 0;
-    }
+    return ((((a & 0x0F) + (b & 0x0F)) & 0x0010) >> 4);
+    // also HF = (a ^ b ^ (a + b)) & 0x10;
   }
 
+  // Return the Carry bit from the 2 input bytes that we want to add.
   int carry (int a, int b) {
-    return (((a + b) & 0x100) >> 8);
+    return ((((a & 0xFF) + (b & 0xFF)) & 0x0100) >> 8);
   }
 
   int halfBorrow (int a, int b) {

@@ -17,8 +17,8 @@ class Z80 {
   boolean halted;
 
   int reset = 0;
-  int interrupt = 0;
-  int nmi = 0;
+  boolean interruptPending = false;
+  boolean nmi = false;
 
 
   Z80 () {
@@ -28,8 +28,8 @@ class Z80 {
     this.opcodeBytes = new int[this.fetch];
     this.halted = true;
     this.reset = 0;
-    this.interrupt = 0;
-    this.nmi = 0;
+    this.interruptPending = false;
+    this.nmi = false;
   }
 
   void setRef(Memory memref, Firmware fwvref, GateArray garef, PSG psgref) {
@@ -52,8 +52,8 @@ class Z80 {
   }
 
   void update () {
-    this.pin.INT_b = (1 - this.interrupt);  //Active low; Invert val (0=>1; 1=>0)
-    this.pin.NMI_b = (1 - this.nmi);  //Active low; Invert val (0=>1; 1=>0)
+    this.pin.INT_b = (this.interruptPending) ? 0 : 1;  //Active low; Invert val (0=>1; 1=>0)
+    this.pin.NMI_b = (this.nmi) ? 0 : 1;  //Active low; Invert val (0=>1; 1=>0)
     this.pin.RESET_b = (1 - this.reset);  //Active low; Invert val (0=>1; 1=>0)
   }
 
@@ -76,19 +76,29 @@ class Z80 {
     }
   }
 
-  void interruptReq () {
+  void interruptReq (int prevOpcode) {
+    // if no IRQ or if interrupt not enabled then no need to go further
+    if ((!this.interruptPending) || (this.reg.IFF1 == 0)) {
+      return;
+    }
+    // If Opcode is EI then postpone the int handling after the next instruction
+    if (prevOpcode == 0xFB) {
+      return;
+    }
+    this.reg.IFF1 = 0;
+    this.reg.IFF2 = 0;
     switch (this.reg.IM) {
     case 0 :
-      println("Not supported on CPC");
+      println("Interrupt Mode 0 Not supported on CPC");
       //int rstNb = this.pin.DATA;
       //this.opcodes.RST(int rstNb);
       break;
     case 2 :
-      println("Vectored Interrupt Mode not implemented (yet)");
+      println("Vectored Interrupt Mode (2) not implemented (yet)");
       int addr = (this.reg.reg8b[this.reg.Ipos] << 8) + this.pin.DATA;
       this.reg.specialReg[this.reg.PCpos] = addr;
       break;
-    default :
+    default : // IM 1
       this.opcode.instr.RSTp(7);
     }
   }

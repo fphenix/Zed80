@@ -65,7 +65,7 @@ class Registers {
   int[] reg16b = new int[this.reg16bLen]; // BC, DE, HL, AF, IR, IX, IY
   //int[] flags = new int[this.FlagsLen]; // S, Z, Y, H, X, P/V, N, C
 
-  int IFF1, IFF2; // Interrupts
+  int IFF1, IFF2; // Interrupts FlipFlops
   int IM; // Interrupt Mode
 
   boolean breakMode = false;

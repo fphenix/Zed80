@@ -1,4 +1,4 @@
-CPC cpc; //<>//
+CPC cpc; //<>// //<>//
 Log log;
 
 boolean boot = false;
@@ -17,7 +17,7 @@ void setup () {
     cpc.setSP(0x0000);
     cpc.setShowingDebugMem(0x0000);
     cpc.setBKPOff(); // off
-    cpc.mem.testASM("TESTEX.BIN");
+    cpc.mem.testASM("TESTRS.BIN");
     //cpc.setBKP(0x04F7); // on
     cpc.turnon();
     cpc.setSpeed(1);
