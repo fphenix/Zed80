@@ -3,6 +3,8 @@ class Log {
   String logname;
   boolean mode; // on (true) or off (false)
   int lines;
+  int logfromaddr;
+  int pc;
 
   // ********************************************************************
   Log () {
@@ -17,11 +19,19 @@ class Log {
     this.logname = lname;
     this.log = createWriter("data/" + lname); // Create a new file in the sketch directory
     this.lines = 0;
+    this.logfromaddr = -2;
+    this.pc = -1;
   }
 
   // ********************************************************************
   void logModeON () {
     this.mode = true;
+    this.logfromaddr = -2;
+  }
+
+  void logModeON (int addr) {
+    this.mode = false;
+    this.logfromaddr = addr;
   }
 
   void logModeOFF () {
@@ -32,10 +42,21 @@ class Log {
     return this.mode;
   }
 
+  void setPC (int tpc) {
+    this.pc = tpc;
+  }
+
   // ********************************************************************
-  void logln (String str) {
-    if (this.mode) {
-      this.log.println(str);
+  void logIt (String str, boolean ln) {
+    println(this.mode, (this.logfromaddr == this.pc), hex(this.logfromaddr, 4), hex(this.pc, 4));
+    if ((this.mode) || (this.logfromaddr == this.pc)) {
+      print("****************************************************************************");
+      this.mode = true;
+      if (ln) {
+        this.log.println(str);
+      } else {
+        this.log.print(str);
+      }
       this.lines++;
       if ((this.lines % 10) == 0) {
         this.logFlush();
@@ -43,10 +64,12 @@ class Log {
     }
   }
 
+  void logln (String str) {
+    this.logIt(str, true);
+  }
+
   void lognnl (String str) {
-    if (this.mode) {
-      this.log.print(str);
-    }
+    this.logIt(str, false);
   }
 
   // ********************************************************************

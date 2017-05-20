@@ -74,7 +74,7 @@ class GateArray {
 
   DebugWindow dbg;
 
-  String instr;
+  String instrDbg;
 
   /* == Constructors ========================================= */
   GateArray () {
@@ -93,7 +93,7 @@ class GateArray {
     this.frame = 0;
     this.frameModulo = 1;
 
-    screen = createImage(1, 1, RGB);
+    this.screen = createImage(1, 1, RGB);
     this.setMode(1);
     this.intDivRMR = false;
   }
@@ -127,8 +127,8 @@ class GateArray {
     }
     this.decodeReg();
     surface.setSize(this.cpcWidth, this.cpcHeight);
-    screen.resize(this.nbcolfullscreen, this.nbrowfullscreen);
-    screen.loadPixels();
+    this.screen.resize(this.nbcolfullscreen, this.nbrowfullscreen);
+    this.screen.loadPixels();
   }
 
   void calcScreenSize () {
@@ -200,7 +200,7 @@ class GateArray {
   }
 
   void setInstr (String si) {
-    this.instr = si;
+    this.instrDbg = si;
   }
 
   void setMode (int m) {
@@ -315,27 +315,85 @@ class GateArray {
     return ((x >= this.borderxsize) && (x < (this.borderxsize+this.nbcol)) && (y >= this.borderysize) && (y < (this.borderysize+this.nbrow)));
   }
 
+  int xscan = 0;
+  int yscan = 0;
+
   void showScreen() {
+    int pIdx;
     int pixval;
-    int pIdx = 0;
-    // Regular screen
-    for (int y = 0; y < this.nbrowfullscreen; y++) {
-      for (int x = 0; x < this.nbcolfullscreen; x++) {
-        pIdx = this.calcPixIndex(x, y);
-        if (this.isInRegularScreen(x, y)) {         
-          pixval = this.getPixValue(x-this.borderxsize, y-this.borderysize);
-          screen.pixels[pIdx] = this.getPenColor(pixval);
-        } else {
-          screen.pixels[pIdx] = this.getBorderColor();
-        }
-        this.interruptLineCount++;
-        if (this.interruptLineCount == 52) {
+    //float nmax = this.z80.opcode.instr.Mcycles * 40 * (this.nbcolfullscreen) / 64; // 64 NOPs per full line (incl borders)
+    float nmax = (this.nbcolfullscreen * this.nbrowfullscreen) / 6.0;
+    for (int n = 0; n < floor(nmax); n++) {
+      pIdx = this.calcPixIndex(this.xscan, this.yscan);
+      if (this.isInRegularScreen(this.xscan, this.yscan)) {         
+        pixval = this.getPixValue(this.xscan-this.borderxsize, this.yscan-this.borderysize);
+        this.screen.pixels[pIdx] = this.getPenColor(pixval);
+      } else {
+        this.screen.pixels[pIdx] = this.getBorderColor();
+      }
+
+      this.xscan++;
+      if (this.xscan == this.nbcolfullscreen) {
+        this.xscan = 0;
+        // this.HSYNC = 0; // active
+        // this.HSYNC = 1; // inactive
+        // new mode taken into account here (after HSYNC).
+        this.yscan++;
+        if (this.yscan == this.nbrowfullscreen) {
+          this.yscan = 0;
+          // this.VSYNC = 0; // active
+          // this.VSYNC = 1; // inactive
           this.interruptLineCount = 0;
-          this.z80.interruptPending = true;
         }
       }
     }
+    if (this.intDivRMR) {
+      this.interruptLineCount = 0;
+      this.intDivRMR = false;
+        this.z80.interruptPending = false;
+    } else {
+//      this.interruptLineCount++;
+//      if (this.interruptLineCount == 52) { // 6 IRQ possible per VBL
+        this.interruptLineCount = 0;
+        this.z80.interruptPending = true;
+//      }
+    }
   }
+
+  /*
+  void showScreen___KEEP_ARCHIVE () {
+   int pixval;
+   int pIdx;
+   // Regular screen
+   for (int y = 0; y < this.nbrowfullscreen; y++) {
+   for (int x = 0; x < this.nbcolfullscreen; x++) {
+   pIdx = this.calcPixIndex(x, y);
+   if (this.isInRegularScreen(x, y)) {         
+   pixval = this.getPixValue(x-this.borderxsize, y-this.borderysize);
+   this.screen.pixels[pIdx] = this.getPenColor(pixval);
+   } else {
+   this.screen.pixels[pIdx] = this.getBorderColor();
+   }
+   if (this.intDivRMR) {
+   this.interruptLineCount = 0;
+   this.intDivRMR = false;
+   } else {
+   this.interruptLineCount++;
+   if (this.interruptLineCount == 52) {
+   this.interruptLineCount = 0;
+   this.z80.interruptPending = true;
+   }
+   }
+   }
+   // HSYNC = active
+   // HSYNC = Inactive
+   // new mode taken into account here (after HSYNC).
+   }
+   // VSYNC = active
+   // VSYNC = Inactive
+   this.interruptLineCount = 0;
+   }
+   */
 
   // Transform the Hardware (GateArray) color number to the
   // Firmware (Basic/Software) color number and finally to the RGB color

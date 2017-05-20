@@ -201,7 +201,7 @@ class InstrLD8 extends InstrLD16 {
   void LDRA () {
     int val8 = this.getRegVal(this.reg.Apos);
     this.asmInstr = "LD R, A";
-    this.setPMTRpCycles(2, 2, 9, 2, 0);
+    this.setPMTRpCycles(2, 2, 9, 1, 0);
     this.setRegVal(this.reg.Rpos, val8);
     this.comment = "Value = " + this.hex2(val8);
   }

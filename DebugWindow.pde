@@ -92,7 +92,7 @@ class DebugWindow {
     // show current ASM opcode
     this.debugLine++;
     this.debugLine++;
-    text("Opcode : " + this.ga.instr, this.ga.xpad, this.debugLine*this.regypad);
+    text("Opcode : " + this.ga.instrDbg, this.ga.xpad, this.debugLine*this.regypad);
   }
 
   void showDebugStack(int stackaddr) {

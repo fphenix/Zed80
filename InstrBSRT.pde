@@ -26,11 +26,12 @@ class InstrBSRT extends InstrRotShft {
       val8 = this.getRegVal(r);
       this.setPMTRpCycles(2, 2, 8, 2, 0);
     }
-    int z = (((val8 >> b) & 0x01) == 0) ? 1 : 0; // si bit=0, Z=1 sinon Z=0
+    int z = (((val8 >> b) & 0x01) == 0) ? 1 : 0; // si bit=0, Z=1 sinon bi bit= 1, Z=0
     this.comment = "";
 
     //Flags:
     this.reg.writeFlagBit(this.reg.ZFpos, z);
+    this.reg.writeFlagBit(this.reg.PVFpos, z);
     this.reg.resetFlagBit(this.reg.NFpos);
     this.reg.setFlagBit(this.reg.HFpos);
   }

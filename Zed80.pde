@@ -14,16 +14,16 @@ void setup () {
   if (test) {
     cpc = new CPC(false);
     log.logModeON();
-    cpc.setPC(0x0000);
+    cpc.setPC(0x4000);
     cpc.setSP(0x0000);
     cpc.setShowingDebugMem(0x0000);
     cpc.setBKPOff(); // off
-    cpc.mem.testASM("TESTRS.BIN");
+    cpc.mem.testASM("TESTINT.BIN");
     //cpc.setBKP(0x04F7); // on
     cpc.turnon();
-    cpc.setSpeed(1);
+    cpc.setSpeed(1000);
     cpc.step();
-    cpc.setFrameModulo(1);
+    cpc.setFrameModulo(400);
   } else if (boot) {
     cpc = new CPC();
     log.logModeON();
@@ -37,12 +37,15 @@ void setup () {
     cpc.setFrameModulo(500);
   } else {
     cpc = new CPC(boot);
-    log.logModeON();
-    cpc.setPC(0xBEA7);
-    cpc.setSP(0xBFFA);
+    log.logModeON(0x048B);
     cpc.setBKPOff(); // off
     //cpc.setBKP(0x04F7); // on
-    cpc.setReg(0xB0, 0xFF, 0x00, 0x40, 0xAB, 0xFF, 0xFF, 0x80);
+    cpc.setPC(0xBEA7); // PC reg
+    cpc.setSP(0xBFFA); // SP reg
+    cpc.setRegs(0xFF, 0xB0, 0xFF, 0x00, 0x40, 0xAB, 0xFF, 0xA8); //A,B,C,D,E,H,L,F
+    cpc.setPrimes(0x8D, 0x7F, 0x8D, 0xBE, 0xA7, 0xB1, 0xAB, 0x8C); //A,B,C,D,E,H,L,F
+    cpc.setSpeRegs (0x00, 0x5A, 0x0000, 0x0000); // I, R, IX, IY
+    cpc.mem.poke(0xBA1D, 0xC9);
     cpc.turnon();
     cpc.setSpeed(200);
     cpc.setFrameModulo(500);

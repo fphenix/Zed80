@@ -221,7 +221,7 @@ public class InstrGPACC extends InstrIO {
     this.asmInstr = "NEG";
     this.setPMTRpCycles(2, 2, 8, 1, 0);
     int preva = this.getRegVal(this.reg.Apos);
-    int a =  0x100 - preva;
+    int a =  0 - preva;
     this.setRegVal(this.reg.Apos, a);
     this.comment = "Negate A (change sign); A=" + hex2(a);
     this.setFlagsSubType(a, preva, 0);

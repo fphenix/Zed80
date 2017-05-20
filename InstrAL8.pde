@@ -157,7 +157,7 @@ class InstrAL8 extends InstrAL16 {
       this.setRegVal(r, val8);
     }
     this.comment = "value = " + this.hex2(val8);
-    this.setFlagsIncType(val8, prev);
+    this.setFlagsIncType(prev, val8);
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -350,7 +350,7 @@ class InstrAL8 extends InstrAL16 {
     int a = (preva & val8) & 0xFF;
     this.setRegVal(this.reg.Apos, a);
     this.comment = "value = " + this.hex2(a);
-    this.setFlagsAndType(a, preva, val8);
+    this.setFlagsAndType(a);
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -370,7 +370,7 @@ class InstrAL8 extends InstrAL16 {
     int a = (preva | val8) & 0xFF;
     this.setRegVal(this.reg.Apos, a);
     this.comment = "value = " + this.hex2(a);
-    this.setFlagsOrType(a, preva, val8);
+    this.setFlagsOrType(a);
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -410,7 +410,7 @@ class InstrAL8 extends InstrAL16 {
     a = this.getRegVal(this.reg.Apos);
     compa = a - val8;
     this.comment = "Compare = " + this.hex2(compa);
-    this.setFlagsCpType(a, compa, val8);
+    this.setFlagsCpType(compa, a, val8);
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -431,7 +431,7 @@ class InstrAL8 extends InstrAL16 {
     int a = preva & val8;
     this.setRegVal(this.reg.Apos, a);
     this.comment = "value = " + this.hex2(a);
-    this.setFlagsAndType(a, preva, val8);
+    this.setFlagsAndType(a);
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -452,7 +452,7 @@ class InstrAL8 extends InstrAL16 {
     int a = preva | val8;
     this.setRegVal(this.reg.Apos, a);
     this.comment = "value = " + this.hex2(a);
-    this.setFlagsOrType(a, preva, val8);
+    this.setFlagsOrType(a);
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -488,12 +488,12 @@ class InstrAL8 extends InstrAL16 {
       val8 = (val16 & 0x00FF) >> 0;
       ixyName += "l";
     }
-    int preva = this.getRegVal(this.reg.Apos);
+    int a = this.getRegVal(this.reg.Apos);
     this.asmInstr = "CP " + ixyName;
     this.setPMTRpCycles(2, 2, 8, 2, 0);
-    int a = (preva - val8) & 0xFF;
-    this.comment = "value = " + this.hex2(a);
-    this.setFlagsCpType(a, preva, val8);
+    int compa = (a - val8) & 0xFF;
+    this.comment = "value = " + this.hex2(compa);
+    this.setFlagsCpType(compa, a, val8);
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -512,7 +512,7 @@ class InstrAL8 extends InstrAL16 {
     this.setPMTRpCycles(2, 2, 8, 2, 0);
     val8 = (preval8 + 1) & 0xFF;
     this.comment = "value = " + this.hex2(val8);
-    this.setFlagsIncType(val8, preval8);
+    this.setFlagsIncType(preval8, val8);
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -531,7 +531,7 @@ class InstrAL8 extends InstrAL16 {
     this.setPMTRpCycles(2, 2, 8, 2, 0);
     val8 = (preval8 - 1) & 0xFF;
     this.comment = "value = " + this.hex2(val8);
-    this.setFlagsDecType(val8, preval8);
+    this.setFlagsDecType(preval8, val8);
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -542,7 +542,7 @@ class InstrAL8 extends InstrAL16 {
     int a = (preva & val8) & 0xFF;
     this.setRegVal(this.reg.Apos, a);
     this.comment = "value = " + this.hex2(a);
-    this.setFlagsAndType(a, preva, val8);
+    this.setFlagsAndType(a);
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -553,7 +553,7 @@ class InstrAL8 extends InstrAL16 {
     int a = (preva | val8) & 0xFF;
     this.setRegVal(this.reg.Apos, a);
     this.comment = "value = " + this.hex2(a);
-    this.setFlagsOrType(a, preva, val8);
+    this.setFlagsOrType(a);
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -575,7 +575,7 @@ class InstrAL8 extends InstrAL16 {
     a = this.getRegVal(this.reg.Apos);
     compa = a - val8;
     this.comment = "Compare = " + this.hex2(compa);
-    this.setFlagsCpType(a, compa, val8);
+    this.setFlagsCpType(compa, a, val8);
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -663,7 +663,7 @@ class InstrAL8 extends InstrAL16 {
     this.setRegVal(this.reg.Apos, a);
     this.comment = "Value = " + this.hex2(a);
     this.comment += "; displacement = " + sign + abs(displacement);
-    this.setFlagsAndType(a, preva, val8);
+    this.setFlagsAndType(a);
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -680,7 +680,7 @@ class InstrAL8 extends InstrAL16 {
     this.setRegVal(this.reg.Apos, a);
     this.comment = "Value = " + this.hex2(a);
     this.comment += "; displacement = " + sign + abs(displacement);
-    this.setFlagsOrType(a, preva, val8);
+    this.setFlagsOrType(a);
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -712,7 +712,7 @@ class InstrAL8 extends InstrAL16 {
     int a = this.getRegVal(this.reg.Apos);
     int compa = (a - val8) & 0xFF;
     this.comment = "displacement = " + sign + abs(displacement);
-    this.setFlagsCpType(a, compa, val8);
+    this.setFlagsCpType(compa, a, val8);
   }
 
   // -----------------------------------------------------------------------------------------------------

@@ -102,25 +102,25 @@ class InstrWrap {
   // Flags calc and access methods
   // -----------------------------------------------------------------------------------
 
-  void setFlagsAddType(int val8, int operand1, int operand2) {
+  void setFlagsAddType(int res, int operand1, int operand2) {
     int sf, zf, yf, hf, xf, pvf, nf, cf;
-    sf = this.rshiftMask(val8, this.reg.SFpos, 0x01);
-    zf = this.isZero(val8); 
-    yf = this.rshiftMask(val8, this.reg.YFpos, 0x01);
+    sf = this.isNeg(res);
+    zf = this.isZero(res); 
+    yf = this.rshiftMask(res, this.reg.YFpos, 0x01);
     hf = this.halfCarry(operand1, operand2);
-    xf = this.rshiftMask(val8, this.reg.XFpos, 0x01);
-    pvf = this.oVerflow(operand1+operand2);
+    xf = this.rshiftMask(res, this.reg.XFpos, 0x01);
     nf = 0;
+    pvf = this.oVerflow(operand1, operand2, res, nf);
     cf = this.carry(operand1, operand2);
     this.reg.setFlags(sf, zf, yf, hf, xf, pvf, nf, cf);
   }
 
-  void setFlagsIncType (int val8, int preval8) {
+  void setFlagsIncType (int preval8, int val8) {
     int sf, zf, yf, hf, xf, pvf, nf, cf;
-    sf = this.rshiftMask(val8, this.reg.SFpos, 0x01);
+    sf = this.isNeg(val8);
     zf = this.isZero(val8); 
     yf = this.rshiftMask(val8, this.reg.YFpos, 0x01);
-    hf = this.halfCarry(preval8, val8);
+    hf = this.halfCarry(preval8, 1);
     xf = this.rshiftMask(val8, this.reg.XFpos, 0x01);
     pvf = (preval8 == 0x7F) ? 1 : 0;
     nf = 0;
@@ -128,53 +128,57 @@ class InstrWrap {
     this.reg.setFlags(sf, zf, yf, hf, xf, pvf, nf, cf);
   }
 
-  void setFlagsSubType (int a, int preva, int val8) {
+  void setFlagsSubType (int res, int op1, int op2) {
     int sf, zf, yf, hf, xf, pvf, nf, cf;
-    sf = this.rshiftMask(a, this.reg.SFpos, 0x01);
-    zf = this.isZero(a); 
-    yf = this.rshiftMask(a, this.reg.YFpos, 0x01);
-    hf = this.halfBorrow(preva, val8);
-    xf = this.rshiftMask(a, this.reg.XFpos, 0x01);
-    pvf = this.oVerflow(preva-val8);
+    sf = this.isNeg(res);
+    zf = this.isZero(res); 
+    yf = this.rshiftMask(res, this.reg.YFpos, 0x01);
+    hf = this.halfBorrow(op1, op2);
+    xf = this.rshiftMask(res, this.reg.XFpos, 0x01);
     nf = 1;
-    cf = this.borrow(preva, val8);
+    pvf = this.oVerflow(op1, op2, res, nf);
+    cf = this.borrow(op1, op2);
     this.reg.setFlags(sf, zf, yf, hf, xf, pvf, nf, cf);
   }
 
-  void setFlagsDecType (int prev, int val8) {
+  void setFlagsCpType (int compa, int a, int val8) {
+    this.setFlagsSubType(compa, a, val8);
+  }
+
+  void setFlagsDecType (int preva, int res) {
     int sf, zf, yf, hf, xf, pvf, nf, cf;
-    sf = this.rshiftMask(val8, this.reg.SFpos, 0x01);
-    zf = this.isZero(val8); 
-    yf = this.rshiftMask(val8, this.reg.YFpos, 0x01);
-    hf = this.halfBorrow(prev, val8);
-    xf = this.rshiftMask(val8, this.reg.XFpos, 0x01);
-    pvf = (prev == 0x80) ? 1 : 0;
+    sf = this.isNeg(res);
+    zf = this.isZero(res); 
+    yf = this.rshiftMask(res, this.reg.YFpos, 0x01);
+    hf = this.halfBorrow(preva, 1);
+    xf = this.rshiftMask(res, this.reg.XFpos, 0x01);
+    pvf = (preva == 0x80) ? 1 : 0;
     nf = 1;
     cf = this.reg.getCF();
     this.reg.setFlags(sf, zf, yf, hf, xf, pvf, nf, cf);
   }
 
-  void setFlagsAndType (int a, int preva, int val8) {
+  void setFlagsAndType (int val8) {
     int sf, zf, yf, hf, xf, pvf, nf, cf;
-    sf = this.rshiftMask(a, this.reg.SFpos, 0x01);
-    zf = this.isZero(a); 
-    yf = this.rshiftMask(a, this.reg.YFpos, 0x01);
+    sf = this.isNeg(val8);
+    zf = this.isZero(val8); 
+    yf = this.rshiftMask(val8, this.reg.YFpos, 0x01);
     hf = 1;
-    xf = this.rshiftMask(a, this.reg.XFpos, 0x01);
-    pvf = this.oVerflow(preva+val8);
+    xf = this.rshiftMask(val8, this.reg.XFpos, 0x01);
+    pvf = this.parity(val8); // Zilog Z80 User Manual "UM008011-0816" page 158 is incorrect: it should be the parity, not the Overflow
     nf = 0;
     cf = 0;
     this.reg.setFlags(sf, zf, yf, hf, xf, pvf, nf, cf);
   }
 
-  void setFlagsOrType (int a, int preva, int val8) {
+  void setFlagsOrType (int val8) {
     int sf, zf, yf, hf, xf, pvf, nf, cf;
-    sf = this.rshiftMask(a, this.reg.SFpos, 0x01);
-    zf = this.isZero(a); 
-    yf = this.rshiftMask(a, this.reg.YFpos, 0x01);
+    sf = this.isNeg(val8);
+    zf = this.isZero(val8); 
+    yf = this.rshiftMask(val8, this.reg.YFpos, 0x01);
     hf = 0;
-    xf = this.rshiftMask(a, this.reg.XFpos, 0x01);
-    pvf = this.oVerflow(preva+val8);
+    xf = this.rshiftMask(val8, this.reg.XFpos, 0x01);
+    pvf = this.parity(val8); // Zilog Z80 User Manual "UM008011-0816" page 160 is incorrect: it should be the parity, not the Overflow
     nf = 0;
     cf = 0;
     this.reg.setFlags(sf, zf, yf, hf, xf, pvf, nf, cf);
@@ -182,7 +186,7 @@ class InstrWrap {
 
   void setFlagsXorType (int val8) {
     int sf, zf, yf, hf, xf, pvf, nf, cf;
-    sf = this.rshiftMask(val8, this.reg.SFpos, 0x01);
+    sf = this.isNeg(val8);
     zf = this.isZero(val8); 
     yf = this.rshiftMask(val8, this.reg.YFpos, 0x01);
     hf = 0;
@@ -193,22 +197,9 @@ class InstrWrap {
     this.reg.setFlags(sf, zf, yf, hf, xf, pvf, nf, cf);
   }
 
-  void setFlagsCpType (int a, int compa, int val8) {
-    int sf, zf, yf, hf, xf, pvf, nf, cf;
-    sf = this.rshiftMask(compa, this.reg.SFpos, 0x01);
-    zf = this.isZero(compa); 
-    yf = this.rshiftMask(a, this.reg.YFpos, 0x01);
-    hf = this.halfBorrow(a, val8);
-    xf = this.rshiftMask(a, this.reg.XFpos, 0x01);
-    pvf = this.oVerflow(a-val8);
-    nf = 1;
-    cf = this.borrow(a, val8);
-    this.reg.setFlags(sf, zf, yf, hf, xf, pvf, nf, cf);
-  }
-
   void setFlagsInType (int val8) {
     int sf, zf, yf, hf, xf, pvf, nf, cf;
-    sf = this.rshiftMask(val8, this.reg.SFpos, 0x01);
+    sf = this.isNeg(val8);
     zf = this.isZero(val8); 
     yf = this.rshiftMask(val8, this.reg.YFpos, 0x01);
     hf = 0;
@@ -221,7 +212,7 @@ class InstrWrap {
 
   void setFlagsRotType (int val8, int car) {
     int sf, zf, yf, hf, xf, pvf, nf, cf;
-    sf = this.rshiftMask(val8, this.reg.SFpos, 0x01);
+    sf = this.isNeg(val8);
     zf = this.isZero(val8); 
     yf = this.rshiftMask(val8, this.reg.YFpos, 0x01);
     hf = 0;
@@ -242,24 +233,20 @@ class InstrWrap {
     return jmp;
   }
 
-  int oVerflow (int val) {
-    int sign = ((val & 0x80) > 0) ? -1 : 1;
-    val = sign * (val & 0x7F);
-    if ((val < -128) || (val > 127)) {
-      return 1;
-    } else {
-      return 0;
-    }
+  // bit7(a) xor bit7(b) = 0 if a anf b both have the same sign
+  boolean haveSameSign(int a, int b) {
+    return (((a ^ b) & 0x80) == 0);
   }
 
-  int oVerflow16 (int val) {
-    int sign = ((val & 0x8000) > 0) ? -1 : 1;
-    val = sign * (val & 0x7FFF);
-    if ((val < -32768) || (val > 32767)) {
-      return 1;
-    } else {
-      return 0;
-    }
+  //add (Nflag=0) : if a and b different sign : NO overflow
+  //add (Nflag=0) : if a and b same sign      : overflow if sign of result != than sign of operands
+  //sub (Nflag=1) : if a and b same sign      : NO overflow
+  //sub (Nflag=1) : if a and b different sign : overflow if sign of result != than sign of first operand
+  int oVerflow (int a, int b, int res, int nf) {
+    boolean isSub = (nf == 1);
+    boolean operandsSameSign = this.haveSameSign(a, b);
+    boolean resSameSignOperands = this.haveSameSign(a, res);
+    return ((isSub ^ operandsSameSign) && (!resSameSignOperands)) ? 1 : 0;
   }
 
   // Return the Half-Carry bit from the 2 input bytes that we want to add.
@@ -274,15 +261,11 @@ class InstrWrap {
   }
 
   int halfBorrow (int a, int b) {
-    if ((((a & 0x0F) - (b & 0x0F)) & 0x10) < 0) {
-      return 1;
-    } else {
-      return 0;
-    }
+    return ((a & 0x0F) < (b & 0x0F)) ? 1 : 0;
   }
 
   int borrow (int a, int b) {
-    return ((a - b) < 0) ? 1 : 0;
+    return (a < b) ? 1 : 0;
   }
 
   int parity (int a) {
@@ -292,6 +275,10 @@ class InstrWrap {
       p ^= (a >> i) & 0x01; // xor
     }
     return p;
+  }
+
+  int isNeg (int val) {
+    return this.rshiftMask(val, this.reg.SFpos, 0x01); // ret 1 if 2's complement is neg, i.e. if bit7 = 1
   }
 
   int isZeroMask (int val, int mask) {

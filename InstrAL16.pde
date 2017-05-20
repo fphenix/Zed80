@@ -43,7 +43,7 @@ class InstrAL16 extends InstrExTxSrch {
     int prev, hl, cf, hf;
     String dName = this.regNameD(d);
     this.asmInstr = "ADD HL, " + dName;
-    this.setPMTRpCycles(3, 3, 11, 1, 0);
+    this.setPMTRpCycles(1, 3, 11, 1, 0);
     hl = this.getReg16Val(this.reg.HLpos);
     if (d <= this.reg.HLpos) {
       prev = this.getReg16Val(d);
@@ -51,11 +51,11 @@ class InstrAL16 extends InstrExTxSrch {
       prev = this.reg.specialReg[this.reg.SPpos];
     }
     val16 = prev + hl;
-    cf = ((val16 & 0x10000) >> 16);
-    hf = ((val16 & 0x01000) >> 12); // to verify
     this.setReg16Val(this.reg.HLpos, val16);
     this.comment = "value = " + this.hex4(val16);
-
+    // Flags
+    cf = ((val16 & 0x10000) >> 16);
+    hf = this.halfCarry(((hl >> 8) & 0xFF), ((prev >> 8) & 0xFF)); // ((val16 & 0x01000) >> 12); // to verify
     this.reg.resetFlagBit(this.reg.NFpos);
     this.reg.writeCF(cf);   
     this.reg.writeHF(hf);
@@ -74,16 +74,17 @@ class InstrAL16 extends InstrExTxSrch {
     } else {
       prev = this.reg.specialReg[this.reg.SPpos];
     }
-    val16 = prev + hl + this.reg.getCF();
-    cf = ((val16 & 0x10000) >> 16);
-    sf = ((val16 & 0x08000) >> 15);
-    hf = ((val16 & 0x01000) >> 12); // to verify
-    zf = (val16 == 0) ? 1 : 0;
+    prev += this.reg.getCF();
+    val16 = hl + prev;
     this.setReg16Val(this.reg.HLpos, val16);
     this.comment = "value = " + this.hex4(val16);
-
-    this.reg.resetFlagBit(this.reg.NFpos);
-    this.reg.writePVF(this.oVerflow16(val16));   
+    // Flags
+    cf = ((val16 & 0x10000) >> 16);
+    sf = ((val16 & 0x08000) >> 15);
+    hf = this.halfCarry(((hl >> 8) & 0xFF), ((prev >> 8) & 0xFF)); // ((val16 & 0x01000) >> 12); // to verify
+    zf = (val16 == 0) ? 1 : 0;
+    this.reg.resetFlagBit(this.reg.NFpos); // add : n=0
+    this.reg.writePVF(this.oVerflow((val16 >> 8) & 0xFF, (hl >> 8) & 0xFF, (prev >> 8) & 0xFF, 0));   
     this.reg.writeZF(zf);   
     this.reg.writeSF(sf);   
     this.reg.writeCF(cf);   
@@ -103,16 +104,17 @@ class InstrAL16 extends InstrExTxSrch {
     } else {
       prev = this.reg.specialReg[this.reg.SPpos];
     }
-    val16 = prev + hl + this.reg.getCF();
-    cf = ((val16 & 0x10000) >> 16);
-    sf = ((val16 & 0x08000) >> 15);
-    hf = ((val16 & 0x01000) >> 12); // to verify
-    zf = (val16 == 0) ? 1 : 0;
+    prev += this.reg.getCF();
+    val16 = hl - prev;
     this.setReg16Val(this.reg.HLpos, val16);
     this.comment = "value = " + this.hex4(val16);
-
-    this.reg.setFlagBit(this.reg.NFpos);
-    this.reg.writePVF(this.oVerflow16(val16));   
+    //Flags    
+    cf = ((val16 & 0x10000) >> 16);
+    sf = ((val16 & 0x08000) >> 15);
+    hf = this.halfBorrow(((hl >> 8) & 0xFF), ((prev >> 8) & 0xFF)); //((val16 & 0x01000) >> 12); // to verify
+    zf = (val16 == 0) ? 1 : 0;
+    this.reg.setFlagBit(this.reg.NFpos); // sub : N=1
+    this.reg.writePVF(this.oVerflow((val16 >> 8) & 0xFF, (hl >> 8) & 0xFF, (prev >> 8) & 0xFF, 1));   
     this.reg.writeZF(zf);   
     this.reg.writeSF(sf);   
     this.reg.writeCF(cf);   

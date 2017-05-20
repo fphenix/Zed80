@@ -15,16 +15,18 @@ class Memory {
   boolean lowerROMpaging;
   boolean upperROMpaging;
   int upperROMsel = 0;
+  String whichMemName;
 
   Memory () {
     this.ram = new RAM();
     this.lorom = new ROM("Lower", "Firmware.rom");
     this.uproms = new ROM[8];
     this.uproms[0] = new ROM("Upper0", "Basic.rom");
-    this.uproms[7] = new ROM("Upper7", "Amsdos.rom");
+    this.uproms[7] = new ROM("Upper7", "Amsdos.rom"); // d7 dos 6128 or 464 with DDI (external d7)
     this.memdmp = null;
     this.lowerROMpaging = false;
     this.upperROMpaging = false;
+    this.whichMemName = "";
   }
 
   void setRef (Firmware fwvref) {
@@ -39,29 +41,32 @@ class Memory {
     }
   }
 
-  // peek can be done in rom or ram
+  // peek (read) can be done in rom or ram depending on the page select
   int peek (int a) {
     this.addr = a & 0xFFFF;
     // if ROM paging selected for UpperROM, then read from the chosen Page (upperROMsel)
     if (this.isInRange(a, 0xC000, 0xFFFF) && this.upperROMpaging) {
+      this.whichMemName = "UROM" + this.upperROMsel;
       return (this.uproms[this.upperROMsel].data[this.addr & 0x3FFF] & 0xFF);
       // if ROM paging selected for LowerROM, then read from it
     } else if (this.isInRange(a, 0x0000, 0x3FFF) && this.lowerROMpaging) {
+      this.whichMemName = "LROM0";
       return (this.lorom.data[this.addr & 0x3FFF] & 0xFF);
       // in any other case read the RAM
     } else {
+      this.whichMemName = "RAMRD";
       return (this.ram.data[this.addr] & 0xFF);
     }
   }
 
-  // can only poke in RAM
-  void poke (int a, int val) {
-    this.addr = a & 0xFFFF;
+  // can only poke (write) in RAM
+  void poke (int adr, int val) {
+    this.whichMemName = "RAMWR";
+    this.addr = adr & 0xFFFF;
     this.ram.data[this.addr] = val & 0xFF;
   }
 
-  // can only poke in RAM
-  // poke into memory from addr (incrementing) the given list of byte data.
+  // poke the given list of byte data into memory from addr (incrementing).
   void pokeList (int addr, String data) {
     String[] bytesStr = split(data.trim(), ' ');
     int currbyte;
@@ -77,10 +82,13 @@ class Memory {
     this.lowerROMpaging = true;
     this.upperROMpaging = true;
     this.upperROMsel = 0;
-    /*for (int i = 0; i < 0x40; i++) {
-     // copy the RST table from AMSDOS to RAM
-     this.poke(i, this.rompeek(3, 7, i));
-     }*/
+  }
+
+  // copy RST zone from ROM to RAM
+  void copyRSTZone () {
+    for (int i = 0; i < 0x40; i++) {
+      this.poke(i, this.rompeek(0, 0, i));
+    }
   }
 
   void memDump () {
@@ -104,8 +112,10 @@ class Memory {
   int rompeek (int bank, int page, int a) {
     this.addr = a & 0x3FFF;
     if (bank == 0) {
+      this.whichMemName = "LROM0";
       return (this.lorom.data[this.addr] & 0xFF);
     } else {
+      this.whichMemName = "UROM" + page;
       return (this.uproms[page].data[this.addr] & 0xFF);
     }
   }

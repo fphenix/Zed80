@@ -45,6 +45,8 @@ class CPC {
     this.mem.RETVectors();
     if (this.bootup) {
       this.mem.bootUpMem();
+    } else {
+      this.mem.copyRSTZone();
     }
     this.z80.initPC(0);
 
@@ -57,7 +59,16 @@ class CPC {
     this.mem.romDump();
   }
 
-  void setReg(int b, int c, int d, int e, int h, int l, int a, int f) {
+  //------------------------------------------------------------------------
+  void setPC (int pc) {
+    this.z80.reg.setPC(pc & 0xFFFF);
+  }
+
+  void setSP (int sp) {
+    this.z80.reg.setSP(sp & 0xFFFF);
+  }
+
+  void setRegs (int a, int b, int c, int d, int e, int h, int l, int f) {
     this.z80.reg.reg8b[this.z80.reg.Bpos] = b;
     this.z80.reg.reg8b[this.z80.reg.Cpos] = c;
     this.z80.reg.reg8b[this.z80.reg.Dpos] = d;
@@ -68,12 +79,27 @@ class CPC {
     this.z80.reg.reg8b[this.z80.reg.Fpos] = f;
   }
 
-  void setPC (int pc) {
-    this.z80.reg.setPC(pc & 0xFFFF);
+  void setSpeRegs (int i, int r, int ix, int iy) {
+    this.z80.reg.reg8b[this.z80.reg.Ipos] = i;
+    this.z80.reg.reg8b[this.z80.reg.Rpos] = r;
+    this.z80.reg.reg16b[this.z80.reg.IXpos] = ix;
+    this.z80.reg.reg16b[this.z80.reg.IYpos] = iy;
   }
 
-  void setSpeed (int sp) {
-    this.speed = (sp < 1) ? 1 : sp;
+  void setPrimes (int a, int b, int c, int d, int e, int h, int l, int f) {
+    this.z80.reg.regPrime[this.z80.reg.Bpos] = b;
+    this.z80.reg.regPrime[this.z80.reg.Cpos] = c;
+    this.z80.reg.regPrime[this.z80.reg.Dpos] = d;
+    this.z80.reg.regPrime[this.z80.reg.Epos] = e;
+    this.z80.reg.regPrime[this.z80.reg.Hpos] = h;
+    this.z80.reg.regPrime[this.z80.reg.Lpos] = l;
+    this.z80.reg.regPrime[this.z80.reg.Apos] = a;
+    this.z80.reg.regPrime[this.z80.reg.Fpos] = f;
+  }
+
+  //----------------------------------------------------------------
+  void setSpeed (int tspeed) {
+    this.speed = (tspeed < 1) ? 1 : tspeed;
   }
 
   void setFrameModulo (int m) {
@@ -93,13 +119,10 @@ class CPC {
     this.z80.reg.setBKPOff();
   }
 
-  void setSP (int sp) {
-    this.z80.reg.setSP(sp & 0xFFFF);
-  }
-
+  //-----------------------------------------------------------------
   void turnon () {
     this.z80.go();
-    log.logln("PCADDR : OPCODES     : DISASM                ; SZ-H-PNC ; PC  |SP  |B C |D E |H L |A F |I R |IX  |IY    ; Comment");
+    log.logln("MEM   : PCADDR : OPCODES     : DISASM                ; SZ-H-PNC ; PC  |SP  |B C |D E |H L |A F |I R |IX  |IY    ; Comment");
   }
 
   void halt () {

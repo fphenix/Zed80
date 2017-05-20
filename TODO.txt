@@ -1,3 +1,7 @@
+PPI for Keyboard read
+
+Fix bug of ret from IRQ: PC reg goes 1 byte to far when ret from interrupt
+
 use Log class in D7 as well
 
 add a dump image function (dump the screen picuture at will)

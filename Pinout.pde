@@ -106,7 +106,7 @@ class Pinout {
       this.selRegInfo = "GA reg : RMR";
       this.ga.intDivRMR = ((this.DATA & 0x10) > 0); // RMR bit4 : reset de diviseur d'interruption si b4 = 1
       this.selRegInfo += "; Reset du Div d'IRQ = " + this.ga.intDivRMR;
-      if ((this.DATA & 0x08) == 0x00) { // RMR bit 3 = UpperROM paging enable (active low)
+      if ((this.DATA & 0x08) == 0x00) { // RMR bit 3 = UpperROM paging enable (active low); number selected thru 0xDF00 port
         this.mem.upperROMpaging = true;
         this.selRegInfo += "; UpperROM paging enabled";
       } else {
@@ -176,7 +176,7 @@ class Pinout {
   }
 
   // ********************************************************************************************************
-  // **             ROM
+  // **             ROM 0xDFxx
   // ********************************************************************************************************
 
   void accessROMSel() {
@@ -187,7 +187,7 @@ class Pinout {
   }
 
   // ********************************************************************************************************
-  // **             Printer
+  // **             Printer 0xEFxx
   // ********************************************************************************************************
 
   void accessPRNTSel() {
@@ -214,7 +214,7 @@ class Pinout {
   void accessPPISel () {
     int sel = (this.ADDR & 0x0300) >> 8 ;
     switch (sel) {
-    case 0: // 0xF4, Port A Data (PSG, Keyboard/Joystick), RW
+    case 0: // 0xF4xx, Port A Data (PSG, Keyboard/Joystick), RW
       this.selRegInfo = "PPI Port A Data";
       if (this.WR_b == 0) { // Write
         this.currPortAdata = this.DATA;
@@ -222,7 +222,7 @@ class Pinout {
         this.DATA = this.currPortAdata;
       }
       break;
-    case 1: // 0xF5, VSYNC, etc, RW
+    case 1: // 0xF5xx, VSYNC, etc, RW
       this.selRegInfo = "PPI VSYNC, etc";
       // b7: CAS_IN
       // b6: PRN.BUSY
@@ -235,7 +235,7 @@ class Pinout {
         this.DATA = this.currPortBdata | 0x1E;
       }
       break;
-    case 2: // 0xF6, PSG, Cassette, Keyboard, RW
+    case 2: // 0xF6xx, PSG, Cassette, Keyboard, RW
       this.selRegInfo = "PPI PSG, Cassette, Keyboard";
       if (this.RD_b == 0) { // Read
         this.DATA = this.currPortCdata;
@@ -243,37 +243,44 @@ class Pinout {
         this.accessPSG();
       }
       break;
-    default:  // 0xF7, PPI Control W-Only
+    default:  // 0xF7xx, PPI Control W-Only
       this.selRegInfo = "PPI Control";
-      if (this.RD_b == 0) { // Read?
+      if (this.RD_b == 0) { // Read? nop, it's a Wonly!
         return;
       }
+      // hence must have (this.WR_b == 0) from here
+      // if b7 = 1
       if ((this.DATA & 0x80) == 0x80) {
-        //Bit 0    IO-Cl    Direction for Port C, lower bits (always 0=Output in CPC)
-        //Bit 1    IO-B     Direction for Port B             (always 1=Input in CPC)
-        //Bit 2    MS0      Mode for Port B and Port Cl      (always zero in CPC)
-        //Bit 3    IO-Ch    Direction for Port C, upper bits (always 0=Output in CPC)
-        //Bit 4    IO-A     Direction for Port A             (0=Output, 1=Input)
-        //Bit 5,6  MS0,MS1  Mode for Port A and Port Ch      (always zero in CPC)
-        // CPC : Only b4 is of interest
+        //Bit 0    IO-Cl    Direction for bits[3:0] of Port C (always 0=Output in CPC) : Port Cl
+        //Bit 1    IO-B     Direction for bits[7:4] of Port B (always 1=Input in CPC)
+        //Bit 2    MS0      Mode for Port B and Port Cl       (always zero (I/O Mode 0) in CPC)
+        //Bit 3    IO-Ch    Direction for bits[7:4] of Port C (always 0=Output in CPC) : Port Ch
+        //Bit 4    IO-A     Direction for bit [7:0] of Port A (0=Output, 1=Input)
+        //Bit[6:5] MS0,MS1  Mode for Port A and Port Ch       (always b'00 (I/O Mode 0) in CPC); (b'01:Mode1, b'1x: Mode2: BiDir)
+        // on CPC : Only b4 is of interest
         // Writing to PIO Control Register (with Bit7 set), automatically resets
         // PIO Ports A,B,C to 00h each!
-        //In order to write to the PSG sound registers, a value of 82h must be written
+        //In order to write to the PSG sound registers, a value of 82h must be written (Port A : Output)
         // to this register. In order to read from the keyboard (through PSG register 0Eh),
-        // a value of 92h must be written to this register.
-        if (this.WR_b == 0) { // Write
-          this.portADirRead = ((this.DATA & 0x10) >> 4); // 1: In (read), 0:Out (write)
-          this.currPortAdata = 0x00;
-          this.currPortBdata = 0x1E;
-          this.currPortCdata = 0x00;
+        // a value of 92h must be written to this register (Port A: Input).
+        this.portADirRead = ((this.DATA & 0x10) >> 4); // 1: In (read), 0:Out (write)
+        if (this.portADirRead == 1) {
+          this.selRegInfo += " (PortA Input (e.g read Keyboard))"; // 0x92
+        } else {
+          this.selRegInfo += " (PortA Output (e.g write PSG))"; // 0x82
         }
-      } else { // b7 = 1
-        // Bit 0    B        New value for the specified bit (0=Clear, 1=Set)
-        // Bit 1-3  N0,N1,N2 Specifies the number of a bit (0-7) in Port C
-        // Bit 4-6  -        Not Used
-        int bitnb = (this.DATA & 0x0E) << 1;
+        this.currPortAdata = 0x00;
+        this.currPortBdata = 0x7E; // 0x1E, 0x7E, ou 0x00 ????
+        this.currPortCdata = 0x00;
+      } else { // b7 = 0
+        // Bit 0       New value for the specified bit (0=Clear, 1=Set)
+        // Bit [3:1]   Specifies the number of a bit (0-7) in Port C
+        // Bit [6:4]   Not Used
+        // Bit 7       0
+        int bitval = (this.DATA & 0x01) >> 0;
+        int bitnb  = (this.DATA & 0x0E) >> 1;
         this.currPortCdata &= ~(1 << bitnb); // clear bit
-        this.currPortCdata |=  ((this.DATA & 0x01) << bitnb); // write bit
+        this.currPortCdata |=  (bitval << bitnb); // write bit
       }
     }
   }
@@ -299,7 +306,7 @@ class Pinout {
     int sel = (this.DATA & 0xC0) >> 6;
     this.selRegInfo = "PSG, Sel="+sel;
     switch (sel) {
-    case 0 :
+    case 0 : // required by CPC+, but may be not needed on CPC??
       if (this.currPSGopReady) {
         if (this.currPSGopWrite == 1) {
           this.psg.writePSGreg(currPSGopReg, this.currPSGopVal);
@@ -313,7 +320,7 @@ class Pinout {
       this.currPSGopWrite = 0;
       if (this.portADirRead == 1) {
         this.currPSGopVal = this.psg.readPSGreg(currPSGopReg);
-        this.DATA = this.currPSGopVal;
+        this.DATA = this.currPSGopVal; // this.DATA should come from PPI Port A; need to be checked that this is the case 
         this.currPSGopReady = true;
       }
       break;

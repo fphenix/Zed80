@@ -100,8 +100,7 @@ class Z80 {
       this.reg.specialReg[this.reg.PCpos] = addr;
       break;
     default : // IM 1
-    log.logln("Interruption RST 0x38");
-      this.opcode.instr.RSTp(7);
+      this.opcode.instr.CPURSTp(7);
     }
     this.interruptPending = false;
   }

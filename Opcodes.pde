@@ -33,6 +33,7 @@ class Opcodes {
   // =============================================================================================
   void OpCodeSel (int[] opc) {
     this.pc = this.reg.specialReg[this.reg.PCpos];
+    log.setPC(this.pc);
     int r, s, d, b, c, p, q, m, ixy, en, mode;
 
     // -- NOP -------------------------------------------------------------------------------------
@@ -114,7 +115,7 @@ class Opcodes {
       // -- 1000_1rrr : 0x88 to 0x8F
     } else if ((opc[0] & 0xF8) == 0x88) {
       r = (opc[0] & 0x07);
-      this.instr.ADDAr(r);
+      this.instr.ADCAr(r);
 
       // -- ADD A, val8 -------------------------------------------------------------------------------------
       // -- 1100_0110 vvvv_vvvv : 0xC6
@@ -219,8 +220,8 @@ class Opcodes {
       this.instr.SCF();
 
       // -- EI and DI -------------------------------------------------------------------------------------
-      // -- 1111_1011 : 0xFB
-      // -- 1111_0011 : 0xF3
+      // -- 1111_1011 : 0xFB : EI
+      // -- 1111_0011 : 0xF3 : DI
     } else if ((opc[0] & 0xF7) == 0xF3) {
       en = ((opc[0] & 0x08) >> 3);
       this.instr.EIDI(en);
@@ -856,11 +857,11 @@ class Opcodes {
       }
     } else {
       if (this.saidLooping) {
-        log.logln("''''''   " + this.prevmsg);
+        log.logln("_____''______''_____''____   " + this.prevmsg);
         this.saidLooping = false;
       }
     }
-    String s = "0x";
+    String s = this.mem.whichMemName + " : 0x";
     s += hex(this.pc, 4) + " : ";
     for (int i = 0; i < abs(this.instr.Pcycles); i++) {
       s += hex(opcd[i], 2) + " ";
@@ -869,5 +870,6 @@ class Opcodes {
       s += ".. ";
     }
     log.logln(s + msg);
+    this.mem.whichMemName = "" ;
   }
 }

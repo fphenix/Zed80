@@ -138,7 +138,7 @@ class InstrExTxSrch extends InstrStack {
     int bc = this.getReg16Val(this.reg.BCpos);
     bc--;
     this.setReg16Val(this.reg.BCpos, bc);
-    this.comment = "Repeat Move value " + this.hex2(val8) + " from (HL) to (DE); then increment HL, DE and decrement BC until BC = 0 ; BC=" + bc;
+    this.comment = "Repeat Move value " + this.hex2(val8) + " from (HL) to (DE); then increment HL, DE and decrement BC until BC = 0 ; BC=" + this.hex4(bc);
     if (bc == 0) {
       this.setPMTRpCycles(2, 4, 16, 1, 0);
     } else {
@@ -165,7 +165,7 @@ class InstrExTxSrch extends InstrStack {
     int bc = this.getReg16Val(this.reg.BCpos);
     bc--;
     this.setReg16Val(this.reg.BCpos, bc);
-    this.comment = "Repeat Move value "+this.hex2(val8)+" from (HL) to (DE); then decrement HL, DE and BC until BC = 0 ; BC="+bc;
+    this.comment = "Repeat Move value "+this.hex2(val8)+" from (HL) to (DE); then decrement HL, DE and BC until BC = 0 ; BC="+this.hex4(bc);
     if (bc == 0) {
       this.setPMTRpCycles(2, 4, 16, 1, 0);
     } else {
@@ -222,12 +222,12 @@ class InstrExTxSrch extends InstrStack {
     }
     this.comment = "Repeat Compare values in A="+this.hex2(val8inaccu);
     this.comment += " and in (HL)="+this.hex2(val8inconthl)+"; Flags are updated; Increment HL and ";
-    this.comment += " Decrement BC until match or BC=0; match=" + this.isZero(compa) + " ; bc=" + bc;
+    this.comment += " Decrement BC until match or BC=0; match=" + this.isZero(compa) + " ; bc=" + this.hex4(bc);
 
     // Flags
     this.reg.writeFlagBit(this.reg.SFpos, (compa & 0x80) >> 7);
     this.reg.writeFlagBit(this.reg.ZFpos, this.isZero(compa));
-    this.reg.writeFlagBit(this.reg.HFpos, (compa & 0x10) >> 4);
+    this.reg.writeFlagBit(this.reg.HFpos, this.halfBorrow(val8inaccu, val8inconthl));
     this.reg.setFlagBit(this.reg.NFpos);
     this.reg.writeFlagBit(this.reg.PVFpos, this.isNotZero16(bc));
   }
@@ -247,7 +247,7 @@ class InstrExTxSrch extends InstrStack {
     this.setPMTRpCycles(2, 4, 16, 1, 0);
     this.comment = "Compare values in A="+this.hex2(val8inaccu);
     this.comment += " and in (HL)="+this.hex2(val8inconthl)+"; Flags are updated;";
-    this.comment += " Decrement HL="+hex4(hl)+" and BC="+hex4(bc);
+    this.comment += " Decrement HL="+hex4(hl)+" and BC=" + hex4(bc);
 
     // Flags
     this.reg.writeFlagBit(this.reg.SFpos, (compa & 0x80) >> 7);
@@ -277,7 +277,7 @@ class InstrExTxSrch extends InstrStack {
     }
     this.comment = "Repeat Compare values in A="+this.hex2(val8inaccu);
     this.comment += " and in (HL)="+this.hex2(val8inconthl)+"; Flags are updated; Decrement HL and BC";
-    this.comment += " until match or BC=0; match=" + this.isZero(compa) + " ; bc=" + bc;
+    this.comment += " until match or BC=0; match=" + this.isZero(compa) + " ; bc=" + this.hex4(bc);
 
     // Flags
     this.reg.writeFlagBit(this.reg.SFpos, (compa & 0x80) >> 7);
