@@ -33,7 +33,6 @@ class Opcodes {
   // =============================================================================================
   void OpCodeSel (int[] opc) {
     this.pc = this.reg.specialReg[this.reg.PCpos];
-    log.setPC(this.pc);
     int r, s, d, b, c, p, q, m, ixy, en, mode;
 
     // -- NOP -------------------------------------------------------------------------------------
@@ -815,6 +814,7 @@ class Opcodes {
       tmps += opc[i] + " ";
     }
     this.instr.setOpcode(tmps);
+    log.setPC(this.pc);
     this.displayInfo(opc);
     this.prevpc = this.pc;
     this.incrCycles();

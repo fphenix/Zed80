@@ -44,13 +44,12 @@ class Log {
 
   void setPC (int tpc) {
     this.pc = tpc;
+    this.mode |= (this.logfromaddr == this.pc);
   }
 
   // ********************************************************************
   void logIt (String str, boolean ln) {
-    println(this.mode, (this.logfromaddr == this.pc), hex(this.logfromaddr, 4), hex(this.pc, 4));
-    if ((this.mode) || (this.logfromaddr == this.pc)) {
-      print("****************************************************************************");
+    if (this.mode) {
       this.mode = true;
       if (ln) {
         this.log.println(str);

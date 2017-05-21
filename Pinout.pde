@@ -231,8 +231,9 @@ class Pinout {
       // b0: CRTC VCYNC
       if (this.WR_b == 0) { // Write
         this.currPortBdata = this.DATA | 0x1E;
-      } else {
-        this.DATA = this.currPortBdata | 0x1E;
+      } else { // Read
+        this.DATA = 0x1E + this.ga.VSYNC;
+        println(hex(this.DATA), this.ga.VSYNC);
       }
       break;
     case 2: // 0xF6xx, PSG, Cassette, Keyboard, RW
@@ -270,7 +271,7 @@ class Pinout {
           this.selRegInfo += " (PortA Output (e.g write PSG))"; // 0x82
         }
         this.currPortAdata = 0x00;
-        this.currPortBdata = 0x7E; // 0x1E, 0x7E, ou 0x00 ????
+        this.currPortBdata = 0x1E; // 0x1E, 0x7E
         this.currPortCdata = 0x00;
       } else { // b7 = 0
         // Bit 0       New value for the specified bit (0=Clear, 1=Set)

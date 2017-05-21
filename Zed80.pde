@@ -47,8 +47,8 @@ void setup () {
     cpc.setSpeRegs (0x00, 0x5A, 0x0000, 0x0000); // I, R, IX, IY
     cpc.mem.poke(0xBA1D, 0xC9);
     cpc.turnon();
-    cpc.setSpeed(200);
-    cpc.setFrameModulo(500);
+    cpc.setSpeed(600);
+    cpc.setFrameModulo(200);
   }
   background(0);
 }

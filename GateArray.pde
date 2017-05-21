@@ -57,6 +57,8 @@ class GateArray {
 
   int HSyncWidth;
   int VSyncWidth = 16; // lines ???
+  int VSYNC;
+  int HSYNC;
   int interlace;
   int maxRasterAddr;
   int blinkOnOff;
@@ -96,6 +98,8 @@ class GateArray {
     this.screen = createImage(1, 1, RGB);
     this.setMode(1);
     this.intDivRMR = false;
+
+    this.VSYNC = this.HSYNC = 0;
   }
 
   void setRef(Z80 ref, Memory memref, Firmware fwvref) {
@@ -322,8 +326,12 @@ class GateArray {
     int pIdx;
     int pixval;
     //float nmax = this.z80.opcode.instr.Mcycles * 40 * (this.nbcolfullscreen) / 64; // 64 NOPs per full line (incl borders)
-    float nmax = (this.nbcolfullscreen * this.nbrowfullscreen) / 6.0;
+    float nmax = (this.nbcolfullscreen * this.nbrowfullscreen) / 6.0; // 6 IRQ per VBL
     for (int n = 0; n < floor(nmax); n++) {
+      if (n == 5) {
+        this.HSYNC = 0;
+        this.VSYNC = 0;
+      }
       pIdx = this.calcPixIndex(this.xscan, this.yscan);
       if (this.isInRegularScreen(this.xscan, this.yscan)) {         
         pixval = this.getPixValue(this.xscan-this.borderxsize, this.yscan-this.borderysize);
@@ -335,28 +343,24 @@ class GateArray {
       this.xscan++;
       if (this.xscan == this.nbcolfullscreen) {
         this.xscan = 0;
-        // this.HSYNC = 0; // active
-        // this.HSYNC = 1; // inactive
         // new mode taken into account here (after HSYNC).
+        this.HSYNC = 1;
         this.yscan++;
         if (this.yscan == this.nbrowfullscreen) {
           this.yscan = 0;
-          // this.VSYNC = 0; // active
-          // this.VSYNC = 1; // inactive
           this.interruptLineCount = 0;
+          this.VSYNC = 1;
         }
       }
     }
     if (this.intDivRMR) {
       this.interruptLineCount = 0;
       this.intDivRMR = false;
-        this.z80.interruptPending = false;
+      this.z80.interruptPending = false;
     } else {
-//      this.interruptLineCount++;
-//      if (this.interruptLineCount == 52) { // 6 IRQ possible per VBL
-        this.interruptLineCount = 0;
-        this.z80.interruptPending = true;
-//      }
+      this.interruptLineCount++;
+      this.interruptLineCount = 0;
+      this.z80.interruptPending = true;
     }
   }
 
