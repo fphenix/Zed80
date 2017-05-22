@@ -97,6 +97,16 @@
 	"status": "",
     "id": 9
   },
+   {
+    "loadaddr": 16384,
+    "fname": "TESTVECT.BIN",
+    "filetype": 2,
+    "data": "3E 02 CD 0E BC AF 06 03 48 CD 32 BC 3E 01 01 0A 0A CD 32 BC 01 02 02 CD 38 BC CD 6C BB AF CD 96 BB 3E 01 CD 90 BB 21 09 1A CD 75 BB 21 3A 40 7E FE 00 28 10 CD 5A BB 23 18 F5 48 45 4C 4C 4F 20 43 50 43 21 00 18 FD",
+    "length": 0,
+    "startaddr": 16384,
+	"status": "",
+    "id": 9
+  },
  {
     "loadaddr": 16384,
     "fname": "NOP.BIN",
@@ -108,4 +118,3 @@
     "id": 99
   }
 ]
-
