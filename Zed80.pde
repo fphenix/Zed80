@@ -1,4 +1,4 @@
-CPC cpc; //<>// //<>//
+CPC cpc; //<>//
 Log log;
 
 boolean boot = false;
@@ -35,7 +35,7 @@ void setup () {
     cpc.setSpeed(500);
   } else {
     cpc = new CPC(boot);
-    log.logModeON(0x011F);
+    log.logModeON(0x052F);
     cpc.setBKPOff(); // off
     //cpc.setBKP(0x04F7); // on
     cpc.setPC(0xBEA7); // PC reg

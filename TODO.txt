@@ -1,7 +1,5 @@
 PPI for Keyboard read
 
-Fix bug of ret from IRQ: PC reg goes 1 byte to far when ret from interrupt
-
 use Log class in D7 as well
 
 add a dump image function (dump the screen picuture at will)
@@ -11,6 +9,8 @@ regen vector func isVector list
 move all flag compute to func (in progress...)
 
 check for sub and add the sign (0 minus 1 must be 0xff): 2's complement
+
+H flag of ADD HL, DE seems wrong
 
 do a few tests for each opcode
 
