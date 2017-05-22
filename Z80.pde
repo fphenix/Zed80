@@ -18,6 +18,7 @@ class Z80 {
 
   int reset = 0;
   boolean interruptPending = false;
+  boolean interruptAck = false;
   boolean nmi = false;
 
 
@@ -29,6 +30,7 @@ class Z80 {
     this.halted = true;
     this.reset = 0;
     this.interruptPending = false;
+    this.interruptAck = false;
     this.nmi = false;
   }
 
@@ -79,15 +81,19 @@ class Z80 {
 
   void interruptReq (int prevOpcode) {
     // if no IRQ or if interrupt not enabled then no need to go further
-    if ((!this.interruptPending) || (this.reg.IFF1 == 0)) {
+    if (((!this.interruptPending) || (this.reg.IFF1 == 0)) && (!this.interruptAck)) {
+      this.interruptPending = false;
       return;
+    } else {
+      this.interruptAck = true;
+      this.interruptPending = false;
     }
     // If Opcode is EI then postpone the int handling after the next instruction
     if (prevOpcode == 0xFB) {
       return;
     }
-    this.reg.IFF1 = 0;
-    this.reg.IFF2 = 0;
+    this.reg.IFF1 = 0; // Does a "DI"
+    this.reg.IFF2 = 0; // Does a "DI"
     switch (this.reg.IM) {
     case 0 :
       println("Interrupt Mode 0 Not supported on CPC");
@@ -99,9 +105,10 @@ class Z80 {
       int addr = (this.reg.reg8b[this.reg.Ipos] << 8) + this.pin.DATA;
       this.reg.specialReg[this.reg.PCpos] = addr;
       break;
-    default : // IM 1
+    default : // IM 1 : RST 0x38
       this.opcode.instr.CPURSTp(7);
     }
     this.interruptPending = false;
+    this.interruptAck = false;
   }
 }

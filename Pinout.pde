@@ -90,7 +90,11 @@ class Pinout {
     switch (cmd) {
     case 0: //PENR: b[7:6] = b'00
       this.currpen = (this.DATA & 0x1F); // si b4=1 then BORDER selected, else b[3:0]=PEN number
-      this.selRegInfo = "GA reg : PENR";
+      if (this.currpen < 0x10) {
+        this.selRegInfo = "GA reg : PENR " + this.currpen;
+      } else {
+        this.selRegInfo = "GA reg : BORDER selected";
+      }
       break;
     case 1: // INKR: b[7:6] = b'01
       this.currink = (this.DATA & 0x1F); // INK Hardware value = b[4:0]
@@ -141,20 +145,20 @@ class Pinout {
     case 0: // 0xBCxx : W-only Select Reg
       this.selRegInfo = "CRTC Select reg";
       if (this.WR_b == 0) { // Write
-        this.currCRTCreg = this.DATA;
-        this.currCRTCreg = (this.currCRTCreg < 0) ? 0 : (this.currCRTCreg > 31) ? 31 : this.currCRTCreg; // clamp to 0...31
+        this.currCRTCreg = this.DATA & 0x1F; // clamp to 0...31
       }
       break;
     case 1: // 0xBDxx : W-only Data Reg
       this.selRegInfo = "CRTC Data reg";
       if (this.WR_b == 0) { // Write
         if (this.currCRTCreg == 3) {
-          this.ga.CRTCreg[this.currCRTCreg] = this.DATA & 0x0F; // nibble de poid fort (syncro V) seulement sur CRTC type 3 et 4 (CPC PLUS?) non supporté
-        } else if (this.currCRTCreg <= 15) {
+          this.ga.CRTCreg[this.currCRTCreg] = 0x80 | (this.DATA & 0x0F); // nibble de poid fort (syncro V) seulement sur CRTC type 3 et 4 (CPC PLUS?) non supporté
+        } else if (this.currCRTCreg <= 15) { // other regs are read only
           this.ga.CRTCreg[this.currCRTCreg] = this.DATA;
         }
         // else ignored
-        this.ga.decodeReg();
+        //this.ga.decodeReg();
+        this.ga.init();
       }
       break;
     case 2: // 0xBExx : Depends on the CRTC version; R-only ; nothing on Type 0 and 2; Status on Type 1
@@ -233,7 +237,6 @@ class Pinout {
         this.currPortBdata = this.DATA | 0x1E;
       } else { // Read
         this.DATA = 0x1E + this.ga.VSYNC;
-        println(hex(this.DATA), this.ga.VSYNC);
       }
       break;
     case 2: // 0xF6xx, PSG, Cassette, Keyboard, RW
@@ -378,10 +381,10 @@ class Pinout {
    #   B       r/C      sel
    01xxxxxx xxxxxxxx 0x7F          w   {Gate Array}
    01xxxxxx 11xxxxxx 0x7F          w   {RAM Configuration}
-   x0xxxx00 xxxxxxxx {0xBC 0xBF}   w   {CRTC6845, Cathode-Ray Tube Controller, Register select}
-   x0xxxx01 xxxxxxxx {0xBC 0xBF}   w   {CRTC6845, Cathode-Ray Tube Controller, Register Data Write}
-   x0xxxx10 xxxxxxxx {0xBC 0xBF}   rw  {CRTC6845, Cathode-Ray Tube Controller, Function depends on 6845 version}
-   x0xxxx11 xxxxxxxx {0xBC 0xBF}   rw  {CRTC6845, Cathode-Ray Tube Controller, Function depends on 6845 version}
+   x0xxxx00 xxxxxxxx {0xBC 0xBF}   w   {CRTC6845, Cathode-Ray Tube Controller, Register select: BCxx}
+   x0xxxx01 xxxxxxxx {0xBC 0xBF}   w   {CRTC6845, Cathode-Ray Tube Controller, Register Data Write : BDxx}
+   x0xxxx10 xxxxxxxx {0xBC 0xBF}   rw  {CRTC6845, Cathode-Ray Tube Controller, Function depends on 6845 version: BExx}
+   x0xxxx11 xxxxxxxx {0xBC 0xBF}   rw  {CRTC6845, Cathode-Ray Tube Controller, Function depends on 6845 version: BFxx}
    xx0xxxxx xxxxxxxx 0xDF          w   {ROM select}
    xxx0xxxx xxxxxxxx 0xEF          w   {Printer port}
    xxxx0x00 dddddddd 0xF4          rw  {PPI8255 Programmable Peripheral Interface, Port A : PSG Data}
@@ -468,6 +471,35 @@ class Pinout {
     return str;
   }
 
+  /* #Addr-high Addr-low Official  r/w   Name
+   #   B       r/C      sel
+   01xxxxxx xxxxxxxx 0x7F          w   {Gate Array}
+   01xxxxxx 11xxxxxx 0x7F          w   {RAM Configuration}
+   x0xxxx00 xxxxxxxx {0xBC 0xBF}   w   {CRTC6845, Cathode-Ray Tube Controller, Register select: BCxx}
+   x0xxxx01 xxxxxxxx {0xBC 0xBF}   w   {CRTC6845, Cathode-Ray Tube Controller, Register Data Write : BDxx}
+   x0xxxx10 xxxxxxxx {0xBC 0xBF}   rw  {CRTC6845, Cathode-Ray Tube Controller, Function depends on 6845 version: BExx}
+   x0xxxx11 xxxxxxxx {0xBC 0xBF}   rw  {CRTC6845, Cathode-Ray Tube Controller, Function depends on 6845 version: BFxx}
+   xx0xxxxx xxxxxxxx 0xDF          w   {ROM select}
+   xxx0xxxx xxxxxxxx 0xEF          w   {Printer port}
+   xxxx0x00 dddddddd 0xF4          rw  {PPI8255 Programmable Peripheral Interface, Port A : PSG Data}
+   xxxx0x01 xxxxxxxx 0xF5          rw  {PPI8255 Programmable Peripheral Interface, Port B}
+   xxxx0x10 00xxxxxx 0xF6          rw  {PPI8255 Programmable Peripheral Interface, Port C : PSG Inactive ; Must be used between functions on CPC+}
+   xxxx0x10 01xxxxxx 0xF6          rw  {PPI8255 Programmable Peripheral Interface, Port C : PSG Read from selected register ; data read will be available on PPI PortA which must be operating as input}
+   xxxx0x10 10xxxxxx 0xF6          rw  {PPI8255 Programmable Peripheral Interface, Port C : PSG Write to selected register ; data to write is available on PPI PortA which must be operating as output}
+   xxxx0x10 11xxxxxx 0xF6          rw  {PPI8255 Programmable Peripheral Interface, Port C : PSG Select a register ; register number available on PPI PortA which must be operating as output}
+   xxxx0x11 xxxxxxxx 0xF7          w   {PPI8255 Programmable Peripheral Interface, Control Register}
+   xxxxx0x0 0xxxxxx0 {0xF8 0xFB}   w   {Expansion Peripherals: FDC765 Floppy Disc Controller: Drive motor control}
+   xxxxx0x0 0xxxxxx0 {0xF8 0xFB}   r   {Expansion Peripherals: FDC765 Floppy Disc Controller: Not used}
+   xxxxx0x0 0xxxxxx1 {0xF8 0xFB}   w   {Expansion Peripherals: FDC765 Floppy Disc Controller: Drive motor control}
+   xxxxx0x0 0xxxxxx1 {0xF8 0xFB}   r   {Expansion Peripherals: FDC765 Floppy Disc Controller: Not used}
+   xxxxx0x1 0xxxxxx0 {0xF8 0xFB}   w   {Expansion Peripherals: FDC765 Floppy Disc Controller: Data Register}
+   xxxxx0x1 0xxxxxx0 {0xF8 0xFB}   r   {Expansion Peripherals: FDC765 Floppy Disc Controller: Main Status Register}
+   xxxxx0x1 0xxxxxx1 {0xF8 0xFB}   w   {Expansion Peripherals: FDC765 Floppy Disc Controller: Data Register}
+   xxxxx0x1 0xxxxxx1 {0xF8 0xFB}   r   {Expansion Peripherals: FDC765 Floppy Disc Controller: Data Register}
+   xxxxx0xx x0xxxxxx {0xF8 0xFB}   rw  {Expansion Peripherals: Reserved}
+   xxxxx0xx 111xxxxx {0xF8 0xFB}   rw  {Expansion Peripherals: User}
+   xxxxx0xx 11111111 {0xF8 0xFB}   rw  {Expansion Peripherals: Reset}
+   xxxxx0xx xx0xxxxx {0xF8 0xFB}   rw  {Expansion Peripherals: Serial Port}  */
   void periphSelected (int adr) {
     this.selGA = false;
     this.selRAM = false;
@@ -476,25 +508,25 @@ class Pinout {
     this.selPRNT = false;
     this.selPPI = false;
     this.selXPP = false;
-    if ((adr & 0x8000) == 0x0000) {
+    if ((adr & 0x8000) == 0x0000) { // 0x7Fxx
       this.selGA = true;
     }
-    if ((adr & 0x80C0) == 0x00C0) {
+    if ((adr & 0x80C0) == 0x00C0) { // 0x7FCx
       this.selRAM = true;
     } 
-    if ((adr & 0x4000) == 0x0000) {
+    if ((adr & 0x4000) == 0x0000) { // 0xBxxx (0xBC, BD, BE, BFxx)
       this.selCRTC = true;
     }    
-    if ((adr & 0x2000) == 0x0000) {
+    if ((adr & 0x2000) == 0x0000) { // 0xDFxx
       this.selROM = true;
     } 
-    if ((adr & 0x1000) == 0x0000) {
+    if ((adr & 0x1000) == 0x0000) { // 0xEFxx
       this.selPRNT = true;
     } 
-    if ((adr & 0x0800) == 0x0000) {
+    if ((adr & 0x0800) == 0x0000) { // 0xF4xx to 0xF7xx
       this.selPPI = true;
     }
-    if ((adr & 0x0400) == 0x0000) {
+    if ((adr & 0x0400) == 0x0000) { // 0xFAxx, 0xFBxx
       this.selXPP = true;
     }
   }

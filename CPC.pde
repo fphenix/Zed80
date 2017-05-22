@@ -102,10 +102,6 @@ class CPC {
     this.speed = (tspeed < 1) ? 1 : tspeed;
   }
 
-  void setFrameModulo (int m) {
-    this.ga.setFrameMod(m);
-  }
-
   void setShowingDebugMem (int m) {
     this.ga.dbg.setShowingMem(m);
   }

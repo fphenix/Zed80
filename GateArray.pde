@@ -1,5 +1,20 @@
 // Gate Array and CRTC (Cathode Ray Tube Controller)
 
+// Timing:
+// Frame rate: 50Hz (1 frame every 19968us) : 1 VSYNC per frame
+// Horizontal refresh rate : 15625Hz (1 HSYNC every 64us) : in normal op = 1 scanline
+// 312 HSYNC per frame
+// HSYNC = off when VSYN = on
+//
+// Gate array fetches 2 bytes per 1us (1 NOP = 1us = 1char = 2bytes)
+// Mode0 (and 3) : 2 bytes = 4 pixels per "NOP"
+// Mode1         :         = 8 pix per NOP
+// Mode2         :         = 16 pix per NOP
+//
+// Interrupts:
+// ~300Hz (1 INTREQ possible every 3.328 ms), about 1 INTREQ every 52 HSYNC, so 6 INTREQ possible every frame
+// active low, duration of the low pulse: 1.4us (1.4 NOP);
+
 class GateArray {
   int mode;
   int[] pen = new int[16];
@@ -11,8 +26,6 @@ class GateArray {
   int pixIndex;
   int cpcWidth;
   int cpcHeight;
-  int frame;
-  int frameModulo;
 
   int borderColor = color(0, 32, 0);
 
@@ -22,41 +35,44 @@ class GateArray {
   int nbrowfullscreen;
   int nbcol;
   int nbcolfullscreen;
+  int nbrowcrtc;
+  int nbcolcrtc;
   int borderxsize, borderysize;
   float xpad, ypad;
   final float mainscl = 2.0;
 
   boolean intDivRMR;
   int interruptLineCount;
-  int hSyncCnt = 0;
   int sigDISPTMG = 0; // '1' if in BORDER color
   int sigBLACK = 0; // '1' if HSYNC/VSYNC active to 'display' a true black/no color
-  int charSize = 8;
+  int xCharSize = 8;
+  int yCharSize = 8;
 
+  final int GAfetchesBytesPerNOP = 2;
   // CRTC registers 0 to 17
-  final int regHorizTotChar = 0;
-  final int regHorizDispChar = 1; // when horiz char count equals this reg then DISPTMG set to 1
-  final int regHorizSyncPosChar = 2; // start of HSync sig
-  final int regHorizSyncWidth = 3;
-  final int regVerticTotChar = 4;
-  final int regVerticAdjust = 5; // in scan line
-  final int regVerticDispChar = 6; // when vertic char count equals this reg, then DISPRMG set to 1
-  final int regVerticSyncPosChar = 7; // start of VSync sig
-  final int regInterlaceSkew = 8;
-  final int regMaxRasterAddr = 9;
-  final int regBlink = 10;
-  final int regCursorPos = 11;
-  final int regDispStartAddrHigh = 12;
-  final int regDispStartAddrLow = 13;
-  final int regCursorStartAddrHigh = 14;
-  final int regCursorStartAddrLow = 15;
-  final int regLightPenStartAddrHigh = 16; // read only
-  final int regLightPenStartAddrLow = 17; // read only
+  final int regR00HorizTotChar = 0;
+  final int regR01HorizDispChar = 1; // when horiz char count equals this reg then DISPTMG set to 1
+  final int regR02HorizSyncPosChar = 2; // start of HSync sig
+  final int regR03HorizSyncWidth = 3;
+  final int regR04VerticTotChar = 4;
+  final int regR05VerticAdjust = 5; // in scan line
+  final int regR06VerticDispChar = 6; // when vertic char count equals this reg, then DISPRMG set to 1
+  final int regR07VerticSyncPosChar = 7; // start of VSync sig
+  final int regR08InterlaceSkew = 8;
+  final int regR09MaxRasterAddr = 9;
+  final int regR10Blink = 10;
+  final int regR11CursorPos = 11;
+  final int regR12DispStartAddrHigh = 12;
+  final int regR13DispStartAddrLow = 13;
+  final int regR14CursorStartAddrHigh = 14;
+  final int regR15CursorStartAddrLow = 15;
+  final int regR16LightPenStartAddrHigh = 16; // read only
+  final int regR17LightPenStartAddrLow = 17; // read only
   String[] CRTCregNames = {"HTotChar", "HDispChar", "HSyncPos", "H_V_Sync_Width (VVVVHHHH)", "VTotChar", "VAdjust", "VDispChar", "VSyncPos", "Interlace and Skew", "MaxRasterAddr", "BlinkOnOff (b6) and Speed (b5)", "CursorEndRaster", "DispStartAddrHigh", "DispStartAddrLow", "CursorAddrHigh", "CursorAddrLow", "LightPenAddrHigh", "LightPenAddrLow"};
   int[] CRTCreg = {63, 40, 46, 142, 38, 0, 25, 30, 0, 7, 0, 0, 0x30, 0, 0, 0, 0, 0};
 
   int HSyncWidth;
-  int VSyncWidth = 16; // lines ???
+  int VSyncWidth;
   int VSYNC;
   int HSYNC;
   int interlace;
@@ -68,6 +84,8 @@ class GateArray {
   int cursorAddr;
   int lightpenAddr;
 
+  int frame;
+
   Z80 z80;       // reference
   Registers reg; // reference
   RAM ram;       // reference
@@ -76,7 +94,8 @@ class GateArray {
 
   DebugWindow dbg;
 
-  String instrDbg;
+  String instrDbg = "";
+  String previnstrDbg = "";
 
   /* == Constructors ========================================= */
   GateArray () {
@@ -93,13 +112,14 @@ class GateArray {
 
     this.initColor();
     this.frame = 0;
-    this.frameModulo = 1;
 
     this.screen = createImage(1, 1, RGB);
     this.setMode(1);
     this.intDivRMR = false;
 
+    this.interruptLineCount = 0;
     this.VSYNC = this.HSYNC = 0;
+    this.init();
   }
 
   void setRef(Z80 ref, Memory memref, Firmware fwvref) {
@@ -135,17 +155,22 @@ class GateArray {
     this.screen.loadPixels();
   }
 
+  // ---------------------------------------------------------------------------------------
   void calcScreenSize () {
+    this.xCharSize = 8;
     this.yscl = 1.0 * this.mainscl;
-    this.lines = this.CRTCreg[this.regVerticDispChar]; // 25 in Char
-    this.nbrow = this.lines * this.charSize; // 200 = 25 * 8
-    this.nbrowfullscreen = 272;
+    this.lines = this.CRTCreg[this.regR06VerticDispChar]; // 25 in Char
+    this.nbrow = this.lines * this.yCharSize; // 200 = 25 * 8
+    this.nbrowfullscreen = 35 * this.yCharSize; // max visible size (incl borders) = 35 Char; 35*8=280 lines
+
+    this.nbrowcrtc = (this.CRTCreg[regR04VerticTotChar] + 1) * this.yCharSize; // 312 = 39*8 = ((R4+1)*(R9+1))  R4 = 38; R9 = 7
+    this.nbcolcrtc = (this.CRTCreg[regR00HorizTotChar] + 1) * this.xCharSize; // ((R0+1)*8)  R0 = 63
 
     //Mode 1:
     this.xscl = 1.0 * this.yscl;
-    this.columns = this.CRTCreg[this.regHorizDispChar]; // 40 in Char
-    this.nbcol = this.columns * this.charSize; // 320 = 40 * 8
-    this.nbcolfullscreen = 384; 
+    this.columns = this.CRTCreg[this.regR01HorizDispChar]; // R1 = 40 in Char
+    this.nbcol = this.columns * this.xCharSize; // 320 = R1 * 8
+    this.nbcolfullscreen = 48 * this.xCharSize; // max visible size in char (incl borders) is 48; 48*8 = 384 pix; 
 
     //Mode 0 ou 3:
     if ((this.mode == 0) || (this.mode == 3)) {
@@ -164,30 +189,32 @@ class GateArray {
     this.xpad = floor((this.cpcWidth - (this.dbg.xdebug + (this.nbcolfullscreen * this.xscl))) / 3.0); 
     this.ypad = floor((this.cpcHeight - (this.nbrowfullscreen * this.yscl)) / 2.0);
     this.borderxsize = floor((this.nbcolfullscreen - this.nbcol) / 2.0);
-    this.borderysize = floor((this.CRTCreg[this.regVerticSyncPosChar] - this.lines) * this.charSize / 2); // floor((this.nbrowfullscreen - this.nbrow) / 2.0);
+    this.borderysize = floor((this.nbrowfullscreen - this.nbrow) / 2.0);
   }
 
+  //-------------------------------------------------------------------------------------------------
   void decodeReg () {
-    this.charSize = (this.CRTCreg[this.regMaxRasterAddr] & 0x07) + 1;
+    this.yCharSize = (this.CRTCreg[this.regR09MaxRasterAddr] & 0x07) + 1;
+    this.xCharSize = 8;
 
-    this.HSyncWidth = this.CRTCreg[this.regHorizSyncWidth] & 0x0F;
-    this.VSyncWidth = 16; // lines ???
+    this.HSyncWidth = (this.CRTCreg[this.regR03HorizSyncWidth] & 0x0F) * this.xCharSize; // in char, e.g 14 char * 8
+    this.VSyncWidth = 3 * this.yCharSize; // lines ???
 
-    this.interlace = this.CRTCreg[this.regInterlaceSkew] & 0x03;
-    this.maxRasterAddr = this.CRTCreg[this.regMaxRasterAddr] & 0x07;
+    this.interlace = this.CRTCreg[this.regR08InterlaceSkew] & 0x03;
+    this.maxRasterAddr = this.CRTCreg[this.regR09MaxRasterAddr] & 0x07;
 
-    this.blinkOnOff = (this.CRTCreg[this.regBlink] & 0x40) >> 6;
-    this.blinkSpeed = (this.CRTCreg[this.regBlink] & 0x20) >> 5;
+    this.blinkOnOff = (this.CRTCreg[this.regR10Blink] & 0x40) >> 6;
+    this.blinkSpeed = (this.CRTCreg[this.regR10Blink] & 0x20) >> 5;
 
-    int regh = this.CRTCreg[this.regDispStartAddrHigh];
-    int regl = this.CRTCreg[this.regDispStartAddrLow];
+    int regh = this.CRTCreg[this.regR12DispStartAddrHigh];
+    int regl = this.CRTCreg[this.regR13DispStartAddrLow];
     int addrBase = (regh & 0x30) << (2 + 8); // 0010_000
     int addrOffset = ((regh & 0x03) << 8) + regl;
     this.dispAddr = addrBase + addrOffset;
     this.dispBufferSize = (((regh & 0x0C) >> 2) == 0x03) ? 32 : 16; // 32 or 16 KB
 
-    regh = this.CRTCreg[this.regCursorStartAddrHigh];
-    regl = this.CRTCreg[this.regCursorStartAddrLow];
+    regh = this.CRTCreg[this.regR14CursorStartAddrHigh];
+    regl = this.CRTCreg[this.regR15CursorStartAddrLow];
     addrBase = (regh & 0x30) << (2 + 8);
     addrOffset = ((regh & 0x03) << 8) + regl;
     this.cursorAddr = addrBase + addrOffset;
@@ -199,18 +226,15 @@ class GateArray {
 
   //===================================================================================
 
-  void setFrameMod (int m) {
-    this.frameModulo = m;
-  }
-
   void setInstr (String si) {
+    this.previnstrDbg = this.instrDbg;
     this.instrDbg = si;
   }
 
+  int modeset;
   void setMode (int m) {
     //println("Mode " + m);
-    this.mode = m & 0x03;
-    this.init();
+    this.modeset = m & 0x03;
   }
 
   int getMode () {
@@ -278,195 +302,202 @@ class GateArray {
     this.borderAlt = tmp;
   }
 
-  // =================================================================================
-
-  void display () {
-    //this.showFullScreen ();
-    if ((this.frame % this.frameModulo) == 0) {
-      this.screen.loadPixels();
-      this.showScreen();
-      this.screen.updatePixels();
-      pushMatrix();
-      translate(this.xpad, this.ypad);
-      scale(this.xscl, this.yscl);
-      image(this.screen, 0, 0);
-      popMatrix();
-      if (this.dbg.showDebug) {
-        this.dbg.showDebugScreen();
-      }
-    }
-    this.frame++;
-  }
-
-  // =================================================================================
-
   int calcPixIndex (int x, int y) {
     return (x + (y * this.nbcolfullscreen));
-  }
-
-  void showFullScreen () {
-    //int pidx;
-    //Full screen (incl. BORDER)
-    //pushMatrix();
-    //translate(this.xpad, this.ypad);
-    //fill(this.getBorderColor());
-    //stroke(255, 0, 0);
-    //rect(0, 0, this.nbcolfullscreen*this.xscl, this.nbrowfullscreen*this.yscl);
-    //popMatrix();
   }
 
   boolean isInRegularScreen (int x, int y) {
     return ((x >= this.borderxsize) && (x < (this.borderxsize+this.nbcol)) && (y >= this.borderysize) && (y < (this.borderysize+this.nbrow)));
   }
 
+  // =================================================================================
+
+  boolean loaded = false;
+  void display () {
+    if ((this.VSYNC == 1) && (!this.loaded)) {
+      this.refreshed = true;
+      this.screen.loadPixels();
+    } else {
+      this.loaded = false;
+    }
+    this.calcScreen();
+    this.showScreen();
+    this.frame++;
+  }
+
+  boolean refreshed = false;
+  void showScreen () {
+    if ((this.VSYNC == 1) && (!this.refreshed)) {
+      this.refreshed = true;
+      this.screen.updatePixels();
+      pushMatrix();
+      translate(this.xpad, this.ypad);
+      scale(this.xscl, this.yscl);
+      image(this.screen, 0, 0);
+      popMatrix();
+    } else {
+      this.refreshed = false;
+    }
+    if ((this.dbg.showDebug) && ((this.frame % 100) == 0)) {
+      this.dbg.showDebugScreen();
+    }
+  }
+
+  void plotPixel() {
+    int pIdx;
+    int pixval;
+    pIdx = this.calcPixIndex(this.xscan, this.yscan);
+    if (this.isInRegularScreen(this.xscan, this.yscan)) {         
+      pixval = this.getPixValue(this.xscan-this.borderxsize, this.yscan-this.borderysize);
+      this.screen.pixels[pIdx] = this.getPenColor(pixval);
+    } else {
+      this.screen.pixels[pIdx] = this.getBorderColor();
+    }
+  }
+
+  // *******************************************************************************************************************************************
+  // Vsync pulse to start the frame
+  // Hsync pulse to start a line
+  // When HSYNC falling edge, then cnt++
+  // When cnt==52, then cnt = 0 and IntPending=true (active low, low pulse width = 1.4 NOP = 1.4us)
+  // If IFF1=1 (EI opcode used) then Z80 will Ack this INT, set cnt[5]=0 (cnt &= 0x1F) and IntPending=false
+  // If in the GA RMR reg (RMR selected when Bits [7:6] of the I/O port = b'10)), bit[4] = 1, then cnt = 0 and IntPending = false
+  // After a VSYNC falling edge, wait 2 HSYNCs and if cnt[5] set (cnt>=32) then cnt[5] = 0 (cnt &= 0x1F) and no Interrupt issued;
+  // else if cnt[5] = 0 then cnt = 0 and IntPending = true.
   int xscan = 0;
   int yscan = 0;
 
-  void showScreen() {
-    int pIdx;
-    int pixval;
-    //float nmax = this.z80.opcode.instr.Mcycles * 40 * (this.nbcolfullscreen) / 64; // 64 NOPs per full line (incl borders)
-    float nmax = (this.nbcolfullscreen * this.nbrowfullscreen) / 6.0; // 6 IRQ per VBL
+  void calcScreen() {
+    float nmax = this.GAfetchesBytesPerNOP * this.getPixPerByte();
     for (int n = 0; n < floor(nmax); n++) {
-      if (n == 5) {
+      if (this.intDivRMR) {
+        this.interruptLineCount = 0;
+        this.intDivRMR = false;
+        this.z80.interruptPending = false;
+      } else if (this.z80.interruptAck) {
+        this.interruptLineCount &= 0x1F;
+      }
+
+      if (this.yscan == this.nbrowfullscreen) {
+        this.HSYNC = 0; //--
+        this.VSYNC = 1;
+      } else if (this.yscan == (this.nbrowfullscreen + this.VSyncWidth)) {
+        this.VSYNC = 0;
+        if (this.interruptLineCount >= 32-2) {
+          this.interruptLineCount -= (32-2);
+        } else {
+          this.z80.interruptPending = true;
+          this.interruptLineCount = 0;
+        }
+      } 
+      if (this.yscan == (this.nbrowcrtc + this.CRTCreg[regR05VerticAdjust])) {
+        this.yscan = 0;
+        this.xscan = 0;
+      }
+
+      if (this.xscan == this.nbcolfullscreen) {
+        if (this.VSYNC == 0) {
+          this.HSYNC = 1;
+        }
+      } else if (this.xscan == (this.nbcolfullscreen + this.HSyncWidth)) {
+        this.HSYNC = 0;
+        this.interruptLineCount++;
+        if (this.interruptLineCount == 52) {
+          this.z80.interruptPending = true;
+          this.interruptLineCount = 0;
+        }
+        if (this.mode != this.modeset) {
+          this.mode = this.modeset;
+          this.init();
+        }
+      } 
+      if (this.xscan == this.nbcolcrtc) {
+        this.yscan++;
+        this.xscan = -1;
+      } else if ((this.xscan < this.nbcolfullscreen) && (this.yscan < this.nbrowfullscreen)) {
+        this.plotPixel();
         this.HSYNC = 0;
         this.VSYNC = 0;
       }
-      pIdx = this.calcPixIndex(this.xscan, this.yscan);
-      if (this.isInRegularScreen(this.xscan, this.yscan)) {         
-        pixval = this.getPixValue(this.xscan-this.borderxsize, this.yscan-this.borderysize);
-        this.screen.pixels[pIdx] = this.getPenColor(pixval);
-      } else {
-        this.screen.pixels[pIdx] = this.getBorderColor();
-      }
-
       this.xscan++;
-      if (this.xscan == this.nbcolfullscreen) {
-        this.xscan = 0;
-        // new mode taken into account here (after HSYNC).
-        this.HSYNC = 1;
-        this.yscan++;
-        if (this.yscan == this.nbrowfullscreen) {
-          this.yscan = 0;
-          this.interruptLineCount = 0;
-          this.VSYNC = 1;
-        }
-      }
-    }
-    if (this.intDivRMR) {
-      this.interruptLineCount = 0;
-      this.intDivRMR = false;
-      this.z80.interruptPending = false;
-    } else {
-      this.interruptLineCount++;
-      this.interruptLineCount = 0;
-      this.z80.interruptPending = true;
     }
   }
 
-  /*
-  void showScreen___KEEP_ARCHIVE () {
-   int pixval;
-   int pIdx;
-   // Regular screen
-   for (int y = 0; y < this.nbrowfullscreen; y++) {
-   for (int x = 0; x < this.nbcolfullscreen; x++) {
-   pIdx = this.calcPixIndex(x, y);
-   if (this.isInRegularScreen(x, y)) {         
-   pixval = this.getPixValue(x-this.borderxsize, y-this.borderysize);
-   this.screen.pixels[pIdx] = this.getPenColor(pixval);
-   } else {
-   this.screen.pixels[pIdx] = this.getBorderColor();
-   }
-   if (this.intDivRMR) {
-   this.interruptLineCount = 0;
-   this.intDivRMR = false;
-   } else {
-   this.interruptLineCount++;
-   if (this.interruptLineCount == 52) {
-   this.interruptLineCount = 0;
-   this.z80.interruptPending = true;
-   }
-   }
-   }
-   // HSYNC = active
-   // HSYNC = Inactive
-   // new mode taken into account here (after HSYNC).
-   }
-   // VSYNC = active
-   // VSYNC = Inactive
-   this.interruptLineCount = 0;
-   }
-   */
-
+  // ----------------------------------------------------------------------------------------------------------
   // Transform the Hardware (GateArray) color number to the
   // Firmware (Basic/Software) color number and finally to the RGB color
   int colorHardware2Color (int hw) {
-    return this.colorPalette(this.colorHardware2Firmware(hw));
+    return this.colorHardware2Firmware(hw);
   }
 
-  // n is the Firmware color number
+  // ink is the Firmware (Basic) color number
   int colorPalette (int ink) {
     switch (ink) {
     case 0 : 
-      return #050505;
-    case 1 : 
-      return #000080;
+      return #050505; // noir
+    case 1 :
+    case 30 :
+      return #000080; // bleu foncé
     case 2 : 
-      return #0000FF;
+      return #0000FF; // bleu
     case 3 : 
-      return #800000;
+      return #800000; // marron
     case 4 : 
-      return #800080;
+      return #800080; // violet
     case 5 : 
-      return #8000FF;
+      return #8000FF; // purpule
     case 6 : 
-      return #FF0000;
-    case 7 : 
-      return #FF0080;
+      return #FF0000; // red
+    case 7 :
+    case 28 :
+      return #FF0080; // magenta
     case 8 : 
-      return #FF00FF;
+      return #FF00FF; // magenta 2
     case 9 : 
-      return #008000;
+      return #008000; // dark green
     case 10 : 
-      return #008080;
+      return #008080; // sea
     case 11 : 
-      return #0080FF;
+      return #0080FF; // sky
     case 12 : 
-      return #808000;
+      return #808000; // caca d'oie
+    case 27 :
     case 13 : 
-      return #808080;
+      return #808080; // gris
     case 14 : 
-      return #8080FF;
+      return #8080FF; // violette
     case 15 : 
-      return #FF8000;
+      return #FF8000; // orange
     case 16 : 
-      return #FF8080;
+      return #FF8080; // sun burn
     case 17 : 
-      return #FF80FF;
+      return #FF80FF; // pink
     case 18 : 
-      return #00FF00;
-    case 19 : 
-      return #00FF80;
+      return #00FF00; // light green
+    case 19 :
+    case 31 :
+      return #00FF80; // green light
     case 20 : 
-      return #00FFFF;
+      return #00FFFF; // cyan
     case 21 : 
-      return #80FF00;
+      return #80FF00; // green
     case 22 : 
-      return #80FF80;
+      return #80FF80; // green light
     case 23 : 
-      return #80FFFF;
+      return #80FFFF; // cyan
     case 24 : 
-      return #FFFF00;
-    case 25 : 
-      return #FFFF80;
+      return #FFFF00; // yellow
+    case 25 :
+    case 29 :
+      return #FFFF80; // poussin
     case 26 : 
-      return #FFFFFF;
+      return #FFFFFF; // white
     default : 
       return #000000;
     }
   }
 
+  // Hardware (GateArray) color to Firmware (Basic) color
   int colorHardware2Firmware (int hwcolor) {
     // Pour obtenir la valeur a OUTer, hwcolor + 0x40;
     switch (hwcolor) {
@@ -585,15 +616,15 @@ class GateArray {
         newbyte = this.setBit(newbyte, (7 - pixnb));
       }
       //Mode 1, 320x200, 4 colors, 1 byte = 4 pixels
-      // bits7 and 3 = pixel0 [1:0]
-      // bits6 and 2 = pixel1 [1:0]
-      // bits5 and 1 = pixel2 [1:0]
-      // bits4 and 0 = pixel3 [1:0]
+      // bits3 and 7 = pixel0 [1:0]
+      // bits2 and 6 = pixel1 [1:0]
+      // bits1 and 5 = pixel2 [1:0]
+      // bits0 and 4 = pixel3 [1:0]
     } else if (this.mode == 1) {
       newbyte = this.clearBit(newbyte, (7 - pixnb));
       newbyte = this.clearBit(newbyte, (3 - pixnb));
-      newbyte += ((pixval >> 1) & 0x01) << (7 - pixnb);
-      newbyte += ((pixval >> 0) & 0x01) << (3 - pixnb);
+      newbyte += ((pixval >> 1) & 0x01) << (3 - pixnb);
+      newbyte += ((pixval >> 0) & 0x01) << (7 - pixnb);
 
       //Mode 0, 160x200, 16 colors, 1 byte = 2 pixels
       // bits7, 5, 3, 1 = pixel0 [bits 0,2,1,3] (!!)
@@ -616,8 +647,8 @@ class GateArray {
     } else if (this.mode == 3) {
       newbyte = this.clearBit(newbyte, (7 - pixnb));
       newbyte = this.clearBit(newbyte, (3 - pixnb));
-      newbyte += ((pixval >> 0) & 0x01) << (7 - pixnb);
       newbyte += ((pixval >> 1) & 0x01) << (3 - pixnb);
+      newbyte += ((pixval >> 0) & 0x01) << (7 - pixnb);
     } else {
       newbyte = 0;
     }
@@ -633,13 +664,13 @@ class GateArray {
       pv = (byteval >> (7 - pixnb)) & 0x01;
 
       //Mode 1, 320x200, 4 colors, 1 byte = 4 pixels
-      // bits7 and 3 = pixel0 [1:0]
-      // bits6 and 2 = pixel1 [1:0]
-      // bits5 and 1 = pixel2 [1:0]
-      // bits4 and 0 = pixel3 [1:0]
+      // bits7 and 3 = pixel0 [0:1]
+      // bits6 and 2 = pixel1 [0:1]
+      // bits5 and 1 = pixel2 [0:1]
+      // bits4 and 0 = pixel3 [0:1]
     } else if (this.mode == 1) {
-      pv  = ((byteval >> (7 - pixnb)) & 0x01) << 1;
-      pv += ((byteval >> (3 - pixnb)) & 0x01) << 0;
+      pv  = ((byteval >> (3 - pixnb)) & 0x01) << 1;
+      pv += ((byteval >> (7 - pixnb)) & 0x01) << 0;
 
       //Mode 0, 160x200, 16 colors, 1 byte = 2 pixels
       // bits7, 5, 3, 1 = pixel0 [bits 0,2,1,3] (!!)
@@ -654,7 +685,7 @@ class GateArray {
       // bits7 and 3 = pixel0 [0:1] // !! warning reversed, taken from Mode 0 table !!
       // bits6 and 2 = pixel1 [0:1] // !! reversed !!
     } else if (this.mode == 3) {
-      pv += ((byteval >> (3 - pixnb)) & 0x01) << 1;
+      pv  = ((byteval >> (3 - pixnb)) & 0x01) << 1;
       pv += ((byteval >> (7 - pixnb)) & 0x01) << 0;
     } else {
       pv = 0;
@@ -662,34 +693,27 @@ class GateArray {
     return pv;
   }
 
-  // calculate which is the Byte number in the line (from 0 to 79 incl.) for pix at x
-  int calcByteNb (int x) {
-    int modulo = 0;
+  // return the number of pixels per byte of data depending on the Video Mode
+  int getPixPerByte () {
+    int ppb = 0;
     if (this.mode == 2) {
-      modulo = 8;
+      ppb = 8;
     } else if (this.mode == 1) {
-      modulo = 4;
-    } else if ((this.mode == 0) || (this.mode == 3)) {
-      modulo = 2;
-    } else {
-      modulo = 1;
+      ppb = 4;
+    } else { // if ((this.mode == 0) || (this.mode == 3)) {
+      ppb = 2;
     }
-    return floor(x / modulo);
+    return ppb;
   }
 
-  // caculate the pix number in the byte corresponding to x location in the line
+  // calculate which is the Byte number in the line (from 0 to 79 incl.) for pix at x
+  int calcByteNb (int x) {
+    return floor(x / this.getPixPerByte());
+  }
+
+  // calculate the pix number in the byte corresponding to x location in the line
   int calcPixInByte (int x) {
-    int modulo = 0;
-    if (this.mode == 2) {
-      modulo = 8;
-    } else if (this.mode == 1) {
-      modulo = 4;
-    } else if ((this.mode == 0) || (this.mode == 3)) {
-      modulo = 2;
-    } else {
-      modulo = 1;
-    }
-    return (x % modulo);
+    return (x % this.getPixPerByte());
   }
 
   int clampPixVal(int pixval) {
