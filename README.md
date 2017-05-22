@@ -6,7 +6,8 @@ Work very much in progress.
 
 Right now it's ("only" vs. "already") capable to run the loader screen of the game "Head Over Heels" (by Ocean), read from a diskette image (.dsk file). 
 The picture is a beautiful 8-bit art by F. David Thorpe, which already makes this project worth it!
-It then loads the game menu.
+
+It then loads the game menu and waits for a keyboard input (that is not implemented yet!).
 
 The frame rate needs to be adjust.
 
