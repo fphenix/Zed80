@@ -17,7 +17,7 @@ class Log {
 
   void construct(String lname) {
     this.logname = lname;
-    this.log = createWriter("data/" + lname); // Create a new file in the sketch directory
+    this.log = createWriter("data/Logs/" + lname); // Create a new file in the sketch directory
     this.lines = 0;
     this.logfromaddr = -2;
     this.pc = -1;

@@ -25,6 +25,7 @@ class Pinout {
   boolean selROM = false;
   boolean selPRNT = false;
   boolean selPPI = false;
+  boolean selFDC = false;
   boolean selXPP = false;
 
   String selRegInfo = "";
@@ -33,6 +34,7 @@ class Pinout {
   Memory mem;
   GateArray ga;
   PSG psg;
+  Floppy fdc;
 
   //---------------------------------------------------------------------------------
   Pinout () {
@@ -42,10 +44,11 @@ class Pinout {
   }
 
   //---------------------------------------------------------------------------------
-  void setRef(Memory memref, GateArray garef, PSG psgref) {
+  void setRef(Memory memref, GateArray garef, PSG psgref, Floppy flopref) {
     this.mem = memref;
     this.ga = garef;
     this.psg = psgref;
+    this.fdc = flopref;
   }
 
   // ********************************************************************************************************
@@ -128,11 +131,12 @@ class Pinout {
       this.ga.setMode(vm); // RMR bits [1:0] = Video Mode
       this.selRegInfo += "; Video Mode=" + vm;
       break;
-    default: // RAM/MMR 6128 Only (or extended RAM expansion)
-      int page = (this.DATA & 0x38) >> 3;
-      int s = (this.DATA & 0x04) >> 2;
-      int bank = (this.DATA & 0x03) >> 0;
-      this.mem.selExtRAMConfig(page, s, bank);
+    default: // RAM/MMR [7:6] = b'11 : 6128 Only (or extended RAM expansion)
+      int page = (this.DATA >> 3) & 0x07;
+      int s = (this.DATA >> 2) & 0x01;
+      int mm = (this.DATA >> 0) & 0x03;
+      this.selRegInfo += "; MMR p,s,mm = " + page + "," + s + "," + mm;
+      this.mem.selExtRAMConfig(page, s, mm);
     }
   }
 
@@ -199,6 +203,34 @@ class Pinout {
   }
 
   // ********************************************************************************************************
+  // **             Floppy Disc unit
+  // ********************************************************************************************************
+
+  void accessFloppySel() {
+    this.selRegInfo = "Floppy Disc Controller";
+    int sel = ((this.ADDR & 0x0100) >> (8 - 1)) | ((this.ADDR & 0x0001) >> 0);
+    if  (this.WR_b == 0) { // Write
+      if ((sel & 0x02) == 0) { // 0xFA7E & FA7F (WR)
+        // Floppy disc drive motor control
+        this.fdc.writeMotorCtrl(this.DATA);
+      } else { // 0xFB7E et FB7F (WR)
+        // Data register of FDC
+        this.fdc.writeData(this.DATA);
+      }
+    } else { // Read
+      if ((sel & 0x03) == 0x02) { // 0xFB7E (RD)
+        // Main status register of FDC
+        this.DATA = this.fdc.readStatus();
+      } else if ((sel & 0x03) == 0x03) { // 0xFB7F (RD)
+        // Data register of FDC
+       this.DATA = this.fdc.readData();
+      } else { // 0xFA7x (RD)
+        return; // Unused 
+      }
+    }
+  }
+
+  // ********************************************************************************************************
   // **             Expansion Peripherals
   // ********************************************************************************************************
 
@@ -214,20 +246,22 @@ class Pinout {
   int currPortAdata = 0x00;
   int currPortBdata = 0x1E;
   int currPortCdata = 0x00;
+  int KbLineSel = 0;
+  int[] kbData = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
   void accessPPISel () {
     int sel = (this.ADDR & 0x0300) >> 8 ;
     switch (sel) {
-    case 0: // 0xF4xx, Port A Data (PSG, Keyboard/Joystick), RW
-      this.selRegInfo = "PPI Port A Data";
+    case 0: // 0xF4xx, Port A : Data (PSG, Keyboard/Joystick), RW
+      this.selRegInfo = "PPI Port A: Data";
       if (this.WR_b == 0) { // Write
         this.currPortAdata = this.DATA;
       } else {
         this.DATA = this.currPortAdata;
       }
       break;
-    case 1: // 0xF5xx, VSYNC, etc, RW
-      this.selRegInfo = "PPI VSYNC, etc";
+    case 1: // 0xF5xx, PortB VSYNC, etc, RW
+      this.selRegInfo = "PPI Port B: VSYNC, etc";
       // b7: CAS_IN
       // b6: PRN.BUSY
       // b5: /EXP
@@ -239,8 +273,8 @@ class Pinout {
         this.DATA = 0x1E + this.ga.VSYNC;
       }
       break;
-    case 2: // 0xF6xx, PSG, Cassette, Keyboard, RW
-      this.selRegInfo = "PPI PSG, Cassette, Keyboard";
+    case 2: // 0xF6xx, Port C: PSG, Cassette, Keyboard, RW
+      this.selRegInfo = "PPI PortC: PSG, Cassette, Keyboard";
       if (this.RD_b == 0) { // Read
         this.DATA = this.currPortCdata;
       } else { // Write
@@ -248,11 +282,10 @@ class Pinout {
       }
       break;
     default:  // 0xF7xx, PPI Control W-Only
-      this.selRegInfo = "PPI Control";
-      if (this.RD_b == 0) { // Read? nop, it's a Wonly!
+      this.selRegInfo = "PPI Control Reg";
+      if (this.RD_b == 0) { // Read? nop, it's a Write-only!
         return;
-      }
-      // hence must have (this.WR_b == 0) from here
+      } // else : must have (this.WR_b == 0) from here
       // if b7 = 1
       if ((this.DATA & 0x80) == 0x80) {
         //Bit 0    IO-Cl    Direction for bits[3:0] of Port C (always 0=Output in CPC) : Port Cl
@@ -310,7 +343,7 @@ class Pinout {
     int sel = (this.DATA & 0xC0) >> 6;
     this.selRegInfo = "PSG, Sel="+sel;
     switch (sel) {
-    case 0 : // required by CPC+, but may be not needed on CPC??
+    case 0 : // Inactive/Validate; required by CPC+, but may be not needed on CPC??
       if (this.currPSGopReady) {
         if (this.currPSGopWrite == 1) {
           this.psg.writePSGreg(currPSGopReg, this.currPSGopVal);
@@ -318,17 +351,23 @@ class Pinout {
           this.DATA = this.psg.readPSGreg(currPSGopReg);
         }
         this.currPSGopReady = false;
+      } else {
+        this.currPSGopReg = this.currPortAdata;
       }
       break;
-    case 1 :
+    case 1 : // Read from PSG reg
       this.currPSGopWrite = 0;
       if (this.portADirRead == 1) {
+        if (currPSGopReg == this.psg.psgReg_EXTDATA_PORTA) {
+          this.KbLineSel = this.DATA & 0x0F;
+          this.psg.regPSG[currPSGopReg] = this.kbData[this.KbLineSel];
+        }
         this.currPSGopVal = this.psg.readPSGreg(currPSGopReg);
-        this.DATA = this.currPSGopVal; // this.DATA should come from PPI Port A; need to be checked that this is the case 
+        this.currPortAdata = this.currPSGopVal;
         this.currPSGopReady = true;
       }
       break;
-    case 2 :
+    case 2 : // Write to PSG Reg
       this.currPSGopWrite = 1;
       if (this.portADirRead == 0) {
         this.currPSGopVal = this.currPortAdata;
@@ -336,7 +375,7 @@ class Pinout {
         this.currPSGopReady = true;
       }
       break;
-    default:
+    default: // Select PSG Reg number
       this.currPSGopReg = this.currPortAdata;
       this.currPSGopReady = false;
     }
@@ -394,18 +433,18 @@ class Pinout {
    xxxx0x10 10xxxxxx 0xF6          rw  {PPI8255 Programmable Peripheral Interface, Port C : PSG Write to selected register ; data to write is available on PPI PortA which must be operating as output}
    xxxx0x10 11xxxxxx 0xF6          rw  {PPI8255 Programmable Peripheral Interface, Port C : PSG Select a register ; register number available on PPI PortA which must be operating as output}
    xxxx0x11 xxxxxxxx 0xF7          w   {PPI8255 Programmable Peripheral Interface, Control Register}
-   xxxxx0x0 0xxxxxx0 {0xF8 0xFB}   w   {Expansion Peripherals: FDC765 Floppy Disc Controller: Drive motor control}
-   xxxxx0x0 0xxxxxx0 {0xF8 0xFB}   r   {Expansion Peripherals: FDC765 Floppy Disc Controller: Not used}
-   xxxxx0x0 0xxxxxx1 {0xF8 0xFB}   w   {Expansion Peripherals: FDC765 Floppy Disc Controller: Drive motor control}
-   xxxxx0x0 0xxxxxx1 {0xF8 0xFB}   r   {Expansion Peripherals: FDC765 Floppy Disc Controller: Not used}
-   xxxxx0x1 0xxxxxx0 {0xF8 0xFB}   w   {Expansion Peripherals: FDC765 Floppy Disc Controller: Data Register}
-   xxxxx0x1 0xxxxxx0 {0xF8 0xFB}   r   {Expansion Peripherals: FDC765 Floppy Disc Controller: Main Status Register}
-   xxxxx0x1 0xxxxxx1 {0xF8 0xFB}   w   {Expansion Peripherals: FDC765 Floppy Disc Controller: Data Register}
-   xxxxx0x1 0xxxxxx1 {0xF8 0xFB}   r   {Expansion Peripherals: FDC765 Floppy Disc Controller: Data Register}
+   xxxxx0x0 0xxxxxx0 {0xFA7E}      w   {Expansion Peripherals: FDC765 Floppy Disc Controller: Drive motor control}
+   xxxxx0x0 0xxxxxx0 {0xFA7E}      r   {Expansion Peripherals: FDC765 Floppy Disc Controller: Not used}
+   xxxxx0x0 0xxxxxx1 {0xFA7F}      w   {Expansion Peripherals: FDC765 Floppy Disc Controller: Drive motor control}
+   xxxxx0x0 0xxxxxx1 {0xFA7F}      r   {Expansion Peripherals: FDC765 Floppy Disc Controller: Not used}
+   xxxxx0x1 0xxxxxx0 {0xFB7E}      w   {Expansion Peripherals: FDC765 Floppy Disc Controller: Data Register}
+   xxxxx0x1 0xxxxxx0 {0xFB7E}      r   {Expansion Peripherals: FDC765 Floppy Disc Controller: Main Status Register}
+   xxxxx0x1 0xxxxxx1 {0xFB7F}      w   {Expansion Peripherals: FDC765 Floppy Disc Controller: Data Register}
+   xxxxx0x1 0xxxxxx1 {0xFB7F}      r   {Expansion Peripherals: FDC765 Floppy Disc Controller: Data Register}
    xxxxx0xx x0xxxxxx {0xF8 0xFB}   rw  {Expansion Peripherals: Reserved}
+   xxxxx0xx xx0xxxxx {0xF8 0xFB}   rw  {Expansion Peripherals: Serial Port}
    xxxxx0xx 111xxxxx {0xF8 0xFB}   rw  {Expansion Peripherals: User}
    xxxxx0xx 11111111 {0xF8 0xFB}   rw  {Expansion Peripherals: Reset}
-   xxxxx0xx xx0xxxxx {0xF8 0xFB}   rw  {Expansion Peripherals: Serial Port}
    --------------------------------------------------------------------------- */
   String IOselInfo (int adr) {
     String str = this.selRegInfo; // "";
@@ -471,35 +510,7 @@ class Pinout {
     return str;
   }
 
-  /* #Addr-high Addr-low Official  r/w   Name
-   #   B       r/C      sel
-   01xxxxxx xxxxxxxx 0x7F          w   {Gate Array}
-   01xxxxxx 11xxxxxx 0x7F          w   {RAM Configuration}
-   x0xxxx00 xxxxxxxx {0xBC 0xBF}   w   {CRTC6845, Cathode-Ray Tube Controller, Register select: BCxx}
-   x0xxxx01 xxxxxxxx {0xBC 0xBF}   w   {CRTC6845, Cathode-Ray Tube Controller, Register Data Write : BDxx}
-   x0xxxx10 xxxxxxxx {0xBC 0xBF}   rw  {CRTC6845, Cathode-Ray Tube Controller, Function depends on 6845 version: BExx}
-   x0xxxx11 xxxxxxxx {0xBC 0xBF}   rw  {CRTC6845, Cathode-Ray Tube Controller, Function depends on 6845 version: BFxx}
-   xx0xxxxx xxxxxxxx 0xDF          w   {ROM select}
-   xxx0xxxx xxxxxxxx 0xEF          w   {Printer port}
-   xxxx0x00 dddddddd 0xF4          rw  {PPI8255 Programmable Peripheral Interface, Port A : PSG Data}
-   xxxx0x01 xxxxxxxx 0xF5          rw  {PPI8255 Programmable Peripheral Interface, Port B}
-   xxxx0x10 00xxxxxx 0xF6          rw  {PPI8255 Programmable Peripheral Interface, Port C : PSG Inactive ; Must be used between functions on CPC+}
-   xxxx0x10 01xxxxxx 0xF6          rw  {PPI8255 Programmable Peripheral Interface, Port C : PSG Read from selected register ; data read will be available on PPI PortA which must be operating as input}
-   xxxx0x10 10xxxxxx 0xF6          rw  {PPI8255 Programmable Peripheral Interface, Port C : PSG Write to selected register ; data to write is available on PPI PortA which must be operating as output}
-   xxxx0x10 11xxxxxx 0xF6          rw  {PPI8255 Programmable Peripheral Interface, Port C : PSG Select a register ; register number available on PPI PortA which must be operating as output}
-   xxxx0x11 xxxxxxxx 0xF7          w   {PPI8255 Programmable Peripheral Interface, Control Register}
-   xxxxx0x0 0xxxxxx0 {0xF8 0xFB}   w   {Expansion Peripherals: FDC765 Floppy Disc Controller: Drive motor control}
-   xxxxx0x0 0xxxxxx0 {0xF8 0xFB}   r   {Expansion Peripherals: FDC765 Floppy Disc Controller: Not used}
-   xxxxx0x0 0xxxxxx1 {0xF8 0xFB}   w   {Expansion Peripherals: FDC765 Floppy Disc Controller: Drive motor control}
-   xxxxx0x0 0xxxxxx1 {0xF8 0xFB}   r   {Expansion Peripherals: FDC765 Floppy Disc Controller: Not used}
-   xxxxx0x1 0xxxxxx0 {0xF8 0xFB}   w   {Expansion Peripherals: FDC765 Floppy Disc Controller: Data Register}
-   xxxxx0x1 0xxxxxx0 {0xF8 0xFB}   r   {Expansion Peripherals: FDC765 Floppy Disc Controller: Main Status Register}
-   xxxxx0x1 0xxxxxx1 {0xF8 0xFB}   w   {Expansion Peripherals: FDC765 Floppy Disc Controller: Data Register}
-   xxxxx0x1 0xxxxxx1 {0xF8 0xFB}   r   {Expansion Peripherals: FDC765 Floppy Disc Controller: Data Register}
-   xxxxx0xx x0xxxxxx {0xF8 0xFB}   rw  {Expansion Peripherals: Reserved}
-   xxxxx0xx 111xxxxx {0xF8 0xFB}   rw  {Expansion Peripherals: User}
-   xxxxx0xx 11111111 {0xF8 0xFB}   rw  {Expansion Peripherals: Reset}
-   xxxxx0xx xx0xxxxx {0xF8 0xFB}   rw  {Expansion Peripherals: Serial Port}  */
+  // ============================================================================================================
   void periphSelected (int adr) {
     this.selGA = false;
     this.selRAM = false;
@@ -507,6 +518,7 @@ class Pinout {
     this.selROM = false;
     this.selPRNT = false;
     this.selPPI = false;
+    this.selFDC = false;
     this.selXPP = false;
     if ((adr & 0x8000) == 0x0000) { // 0x7Fxx
       this.selGA = true;
@@ -526,7 +538,9 @@ class Pinout {
     if ((adr & 0x0800) == 0x0000) { // 0xF4xx to 0xF7xx
       this.selPPI = true;
     }
-    if ((adr & 0x0400) == 0x0000) { // 0xFAxx, 0xFBxx
+    if ((adr & 0x0480) == 0x0000) { // 0xFB7E, FB7F, FA7E
+      this.selFDC = true;
+    } else if ((adr & 0x0400) == 0x0000) { // 0xFAxx, 0xFBxx
       this.selXPP = true;
     }
   }
@@ -548,6 +562,9 @@ class Pinout {
     }
     if (this.selPPI) {
       this.accessPPISel();
+    }
+    if (this.selFDC) {
+      this.accessFloppySel();
     }
     if (this.selXPP) {
       this.accessXPPSel();

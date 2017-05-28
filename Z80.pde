@@ -3,8 +3,8 @@
 class Z80 {
   Registers reg;
   Opcodes opcode;
-  Pinout pin;
 
+  Pinout pin; // ref
   Firmware fwv; // ref
   Memory mem; // Ref
 
@@ -21,10 +21,8 @@ class Z80 {
   boolean interruptAck = false;
   boolean nmi = false;
 
-
   Z80 () {
     this.reg = new Registers();
-    this.pin = new Pinout();
     this.opcode = new Opcodes();
     this.opcodeBytes = new int[this.fetch];
     this.halted = true;
@@ -34,11 +32,11 @@ class Z80 {
     this.nmi = false;
   }
 
-  void setRef(Memory memref, Firmware fwvref, GateArray garef, PSG psgref) {
+  void setRef(Memory memref, Firmware fwvref, Pinout pinref) {
     this.mem = memref;
     this.fwv = fwvref;
-    this.opcode.setRef(this.reg, this.pin, memref, fwvref);
-    this.pin.setRef(memref, garef, psgref);
+    this.pin = pinref;
+    this.opcode.setRef(this.reg, this.pin, this.mem, this.fwv);
   }
 
   void initPC (int val) {

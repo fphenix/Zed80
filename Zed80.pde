@@ -1,9 +1,12 @@
-CPC cpc; //<>//
+import java.awt.event.KeyEvent; //<>//
+
+CPC cpc;
 Log log;
 
-boolean boot = false;
-//boolean runp = true;
 boolean test = false;
+
+int starttime;
+boolean loaded = false;
 
 void setup () {
   size(1100, 570, P2D);
@@ -12,47 +15,56 @@ void setup () {
   log = new Log(); // Create a new file in the sketch directory
 
   if (test) {
-    cpc = new CPC(false);
+    cpc = new CPC();
     log.logModeON();
     cpc.setPC(0x4000);
     cpc.setSP(0x0000);
     cpc.setShowingDebugMem(0x0000);
     cpc.setBKPOff(); // off
-    cpc.mem.testASM("TESTINT.BIN");
+    cpc.mem.testASM("TESTPPI.BIN");
     //cpc.setBKP(0x04F7); // on
     cpc.turnon();
     cpc.setSpeed(1000);
     cpc.step();
-  } else if (boot) {
+  } else {
     cpc = new CPC();
     log.logModeON();
+    //log.logModeON(0xBEA7);
     cpc.setPC(0x0);
     cpc.setSP(0x0);
+    //cpc.setPC(0xBEA7); // PC reg
+    //cpc.setSP(0xBFFA); // SP reg
     cpc.setBKPOff(); // off
     //cpc.setBKP(0x04F7); // on
     //cpc.hideDebugWindow();
+    //cpc.setRegs(0xFF, 0xB0, 0xFF, 0x00, 0x40, 0xAB, 0xFF, 0xA8); //A,B,C,D,E,H,L,F
+    //cpc.setPrimes(0x8D, 0x7F, 0x8D, 0xBE, 0xA7, 0xB1, 0xAB, 0x8C); //A,B,C,D,E,H,L,F
+    //cpc.setSpeRegs (0x00, 0x5A, 0x0000, 0x0000); // I, R, IX, IY
+    cpc.attachFloppyDisc("HEADOVER.DSK");
     cpc.turnon();
-    cpc.setSpeed(500);
-  } else {
-    cpc = new CPC(boot);
-    log.logModeON(0x052F);
-    cpc.setBKPOff(); // off
-    //cpc.setBKP(0x04F7); // on
-    cpc.setPC(0xBEA7); // PC reg
-    cpc.setSP(0xBFFA); // SP reg
-    cpc.setRegs(0xFF, 0xB0, 0xFF, 0x00, 0x40, 0xAB, 0xFF, 0xA8); //A,B,C,D,E,H,L,F
-    cpc.setPrimes(0x8D, 0x7F, 0x8D, 0xBE, 0xA7, 0xB1, 0xAB, 0x8C); //A,B,C,D,E,H,L,F
-    cpc.setSpeRegs (0x00, 0x5A, 0x0000, 0x0000); // I, R, IX, IY
-    cpc.mem.poke(0xBA1D, 0xC9);
-    cpc.turnon();
-    cpc.setSpeed(2000); // 2000
-  }
+    cpc.setSpeed(3000);
+    cpc.setDebugRefresh(150);
+  } 
   background(0);
+  starttime = millis();
 }
 
 void draw () {
   //cpc.step();
   cpc.go();
+  if ((millis() - starttime > 11000) && !loaded) {
+    //    println("Loading game!");
+    loaded = true;
+    //    this.cpc.runD7file("HEADOVER.BIN");
+    //    this.cpc.mem.ram[0].data[0x1BD6] = 0xCD;
+    //    this.cpc.mem.ram[0].data[0x1BD7] = 0xA7;
+    //    this.cpc.mem.ram[0].data[0x1BD8] = 0xBE;
+    //    this.cpc.mem.ram[0].data[0xBC7A] = 0xC9;
+    this.cpc.mem.memDump();
+    println("mem dumped!");
+    //    this.cpc.z80.reg.specialReg[this.cpc.z80.reg.PCpos] = 0xBEA7;
+    //    this.cpc.z80.reg.specialReg[this.cpc.z80.reg.SPpos] = 0xBFFA;
+  }
 }
 
 void end () {
@@ -61,12 +73,14 @@ void end () {
 }
 
 void mouseClicked() {
-  
   cpc.step();
   //log.logFlush(); // Writes the remaining data to the file
 }
 
 void keyPressed() {
-  cpc.z80.reg.setBKPOff();
-  cpc.go();
+  this.cpc.kb.updateKBKeyPressed(keyCode);
+}
+
+void keyReleased() {
+  this.cpc.kb.updateKBKeyReleased(keyCode);
 }

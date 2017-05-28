@@ -130,7 +130,7 @@ class InstrLD16 extends InstrAL8 {
     String ixyName = this.reg.reg16Name[this.reg.IXpos + ixy];    
     int mem16 = ((memhigh & 0xFF) << 8) + (memlow & 0xFF);
     int val16 = this.get16FromPointer(mem16);
-    this.asmInstr = "LD " + ixyName + ", " + this.hex4(val16);
+    this.asmInstr = "LD " + ixyName + ", (" + this.hex4(val16) + ")";
     this.setPMTRpCycles(4, 4, 14, 2, 2);
     this.setReg16Val(this.reg.IXpos + ixy, val16);
     this.comment = "Value " + this.hex4(val16);

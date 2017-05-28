@@ -4,7 +4,6 @@ class VectorTab {
   GateArray ga; // ref
   Registers reg; // ref
   Memory mem; // ref
-  RAM ram; // ref
   D7 d7; // ref
 
   String currFileName;
@@ -17,99 +16,73 @@ class VectorTab {
     this.ga = garef;
     this.reg = zref.reg;
     this.mem = memref;
-    this.ram = memref.ram;
     this.d7 = d7ref;
   }
 
-  void vecBA10 () {
-  }
-
-  void vecBB00 () {
-    this.vectTitle = "???_??? : Initialise le clavier, les prédéfinitions (KEY, KEYDEF), le tampon clavier, ... ";
-  }
-
-  void vecBC06 () {
-    int vida = this.ga.videoAddr; // should only be 0xC000 or 0x4000
-    if (vida == 0xC000) {
-      this.ga.videoAddr = 0x4000;
-    } else {
-      this.ga.videoAddr = 0xC000;
-    }
-    // Entry : ?;
-    // Exit: ?
-    this.vectTitle = "???_??? : Inverse l'adresse de l'écran en mémoire vive vers "  + this.hex4(this.ga.videoAddr);
-  }
-
-  void vecBC08 () {
-    this.ga.videoAddr = (this.reg.reg8b[this.reg.Apos] & 0xC0) << 8; // should only be 0xC0 or 0x40 in A (corresponding resp. to 0xC000 and 0x4000 obvisoulsy)
-    // Entry : A contient une des deux valeurs 0xC0 ou 040;
-    // Exit: rien; les registres AF et HL sont modifiés.
-    this.vectTitle = "???_??? : positionne l'adresse de l'écran en mémoire vive en "  + this.hex4(this.ga.videoAddr);
-  }
-
-  void vecBC0B () {
-    int vida = (this.ga.videoAddr >> 8); // should only be 0xC0 or 0x40
-    // Entry : Aucune;
-    // Exit: A contient le poids fort de l'adresse visée, les registres AF et HL sont modifiés.
-    this.reg.reg8b[this.reg.Apos] = vida;
-    this.vectTitle = "???_??? : lecture dans A de l'octet de poids fort de l'adresse de l'écran en RAM:  "  + this.hex2(vida);
-  }
-
-  void  vecBC0E () {   
-    // Entry:
-    // A contains the mode number (0, 1 or 2)
-    // Exit:   AF, BC, DE  and  HL  are  corrupt,  and  all others are preserved
-    this.ga.setMode(this.reg.reg8b[this.reg.Apos] & 0x03);
-    this.vectTitle = "SCR_SET_MODE : changement de mode écran : mode " + this.ga.getMode();
-  }
-
-  void  vecBC11 () {   
-    // Entry: Aucune
-    // Exit:  A contient le mode, AF modifié
-    this.reg.reg8b[this.reg.Apos] = this.ga.getMode() & 0x03;
-    this.vectTitle = "SCR_GET_MODE : lecture du mode écran : mode " + this.ga.getMode();
-  }
-
-  void vecBC32 () {   
-    this.vectTitle = "SCR_SET_INK : installe une encre PEN";
-    // Entry: A contains the PEN number,  B  contains the first colour,
-    // and C holds the second colour; if B and C are different, the color alternate (flashes)
-    // Exit:   AF, BC, DE  and  HL  are  corrupt,  and  all others are preserved
-    int pen = this.reg.reg8b[this.reg.Apos] & 0x0F;
-    int col1 = this.reg.reg8b[this.reg.Bpos] & 0x1F;
-    int col2 = this.reg.reg8b[this.reg.Cpos] & 0x1F;
-    this.ga.setPEN(pen, col1, col2);
-    this.vectTitle = "SCR_SET_INK : installe une encre PEN " + pen + ", color1 = " + col1 + ", color2 = " + col2;
-  }
-
-  void vecBC38 () {   
-    // Entry:  B contains the first colour,  and C contains the second colour
-    // (if B and C are different, then it will alternate (flash);
-    // Exit:   AF, BC, DE  and  HL  are  corrupt,  and  all others are preserved
-    int col1 = this.reg.reg8b[this.reg.Bpos] & 0x1F;
-    int col2 = this.reg.reg8b[this.reg.Cpos] & 0x1F;
-    this.ga.setBORDER(col1, col2);
-    this.vectTitle = "SCR_SET_BORDER: installation de la couleur du bord, color1 = " + col1 + ", color2 = " + col2;
-  }
-
-  void vecBC3E () {   
-    // Entry:  H holds the time that the  first colour is displayed,
-    // L holds the time the second colour is displayed for.
-    // Exit:  AF and HL  are  corrupt,  and  all  other registers are preserved
-    // Notes: The length  of  time  that  each  colour  is  shown  is measured 
-    // in 1/5Oths of a  second,  and  a value of 0 is taken to 
-    // mean 256 * 1/50 seconds - the default value is  10 * 1/50 seconds
-    int t1 = this.reg.reg8b[this.reg.Hpos];
-    int t2 = this.reg.reg8b[this.reg.Lpos];
-    this.ga.setFlash(t1, t2);
-    this.vectTitle = "SCR_SET_FLASHING : Sets the  speed  with  which  the  border  and  PEN flash; t1 = " + t1 + ", t2 = " + t2;
-  }
-
+  /* void vecBA10 () {
+   }
+   
+   void vecBC08 () {
+   this.ga.videoAddr = (this.reg.reg8b[this.reg.Apos] & 0xC0) << 8; // should only be 0xC0 or 0x40 in A (corresponding resp. to 0xC000 and 0x4000 obvisoulsy)
+   // Entry : A contient une des deux valeurs 0xC0 ou 040;
+   // Exit: rien; les registres AF et HL sont modifiés.
+   this.vectTitle = "???_??? : positionne l'adresse de l'écran en mémoire vive en "  + this.hex4(this.ga.videoAddr);
+   }
+   
+   void  vecBC0E () {   
+   // Entry:
+   // A contains the mode number (0, 1 or 2)
+   // Exit:   AF, BC, DE  and  HL  are  corrupt,  and  all others are preserved
+   this.ga.setMode(this.reg.reg8b[this.reg.Apos] & 0x03);
+   this.vectTitle = "SCR_SET_MODE : changement de mode écran : mode " + this.ga.getMode();
+   }
+   
+   void  vecBC11 () {   
+   // Entry: Aucune
+   // Exit:  A contient le mode, AF modifié
+   this.reg.reg8b[this.reg.Apos] = this.ga.getMode() & 0x03;
+   this.vectTitle = "SCR_GET_MODE : lecture du mode écran : mode " + this.ga.getMode();
+   }
+   
+   void vecBC32 () {   
+   this.vectTitle = "SCR_SET_INK : installe une encre PEN";
+   // Entry: A contains the PEN number,  B  contains the first colour,
+   // and C holds the second colour; if B and C are different, the color alternate (flashes)
+   // Exit:   AF, BC, DE  and  HL  are  corrupt,  and  all others are preserved
+   int pen = this.reg.reg8b[this.reg.Apos] & 0x0F;
+   int col1 = this.reg.reg8b[this.reg.Bpos] & 0x1F;
+   int col2 = this.reg.reg8b[this.reg.Cpos] & 0x1F;
+   this.ga.setPEN(pen, col1, col2);
+   this.vectTitle = "SCR_SET_INK : installe une encre PEN " + pen + ", color1 = " + col1 + ", color2 = " + col2;
+   }
+   
+   void vecBC38 () {   
+   // Entry:  B contains the first colour,  and C contains the second colour
+   // (if B and C are different, then it will alternate (flash);
+   // Exit:   AF, BC, DE  and  HL  are  corrupt,  and  all others are preserved
+   int col1 = this.reg.reg8b[this.reg.Bpos] & 0x1F;
+   int col2 = this.reg.reg8b[this.reg.Cpos] & 0x1F;
+   this.ga.setBORDER(col1, col2);
+   this.vectTitle = "SCR_SET_BORDER: installation de la couleur du bord, color1 = " + col1 + ", color2 = " + col2;
+   }
+   
+   void vecBC3E () {   
+   // Entry:  H holds the time that the  first colour is displayed,
+   // L holds the time the second colour is displayed for.
+   // Exit:  AF and HL  are  corrupt,  and  all  other registers are preserved
+   // Notes: The length  of  time  that  each  colour  is  shown  is measured 
+   // in 1/5Oths of a  second,  and  a value of 0 is taken to 
+   // mean 256 * 1/50 seconds - the default value is  10 * 1/50 seconds
+   int t1 = this.reg.reg8b[this.reg.Hpos];
+   int t2 = this.reg.reg8b[this.reg.Lpos];
+   this.ga.setFlash(t1, t2);
+   this.vectTitle = "SCR_SET_FLASHING : Sets the  speed  with  which  the  border  and  PEN flash; t1 = " + t1 + ", t2 = " + t2;
+   }
+   */
   void vecBC65 () {
     this.currFileName = "";
     this.vectTitle = "Init cassette ... A faire";
   }
-
 
   void vecBC77 () {
     // Input
@@ -133,7 +106,7 @@ class VectorTab {
     int fnamelength = this.reg.reg8b[this.reg.Bpos];
     int mem16 = (this.reg.reg8b[this.reg.Hpos] << 8) + this.reg.reg8b[this.reg.Lpos];
     for (int i = 0; i < fnamelength; i++) {
-      currbyte = this.ram.data[mem16+i];
+      currbyte = this.mem.peek(mem16+i);
       this.currFileName += char(currbyte & 0x7F);
     }
     fileInfo = this.d7.getreadFileInfo(this.currFileName); // b0: file-length; 1: loadaddr, 2: startaddr, 3:filetype
@@ -180,17 +153,17 @@ class VectorTab {
     this.vectTitle += ", start=" + this.hex4(fileInfo[2]) + ")";
   }
 
-  void vecBCCE () {
-    this.vectTitle = "KL_INIT_BACK : initialisation d'une ROM de 2nd plan";
-    // Input
-    // C contient le num/addr de selection de la ROM à initialiser
-    // DE: addr du 1er octet utilisable
-    // HL: addr du dernier octet utilisable
-    // Output:
-    // DE: addr du nouveau 1er octet utilisable
-    // HL: addr du nouveau dernier octet utilisable
-    // AF et B modifiés
-  }
+  /*  void vecBCCE () {
+   this.vectTitle = "KL_INIT_BACK : initialisation d'une ROM de 2nd plan";
+   // Input
+   // C contient le num/addr de selection de la ROM à initialiser
+   // DE: addr du 1er octet utilisable
+   // HL: addr du dernier octet utilisable
+   // Output:
+   // DE: addr du nouveau 1er octet utilisable
+   // HL: addr du nouveau dernier octet utilisable
+   // AF et B modifiés
+   }*/
 
   void vecNotImp (int a) {
     log.logln("Vector " + this.hex4(a) + " not (yet?) implemented");

@@ -87,13 +87,13 @@ class DebugWindow {
       text(this.ga.reg.getFlagBit(i), ((this.ga.reg.SFpos-i)*this.regxpad/2.0)+this.ga.xpad, this.debugLine*this.regypad);
     }
     this.debugLine++;
-//    text("HSync:" + this.ga.HSYNC + "; VSync:" + this.ga.VSYNC + "; Int=" + this.ga.z80.interruptAck, this.ga.xpad, this.debugLine*this.regypad);
-String crtcregval = "CRTC:";
-for (int i = 0; i < 16; i++) {
-  crtcregval += hex(this.ga.CRTCreg[i], 2);
-}
-text(crtcregval, this.ga.xpad, this.debugLine*this.regypad);
-}
+    //    text("HSync:" + this.ga.HSYNC + "; VSync:" + this.ga.VSYNC + "; Int=" + this.ga.z80.interruptAck, this.ga.xpad, this.debugLine*this.regypad);
+    String crtcregval = "CRTC:";
+    for (int i = 0; i < 16; i++) {
+      crtcregval += hex(this.ga.CRTCreg[i], 2);
+    }
+    text(crtcregval, this.ga.xpad, this.debugLine*this.regypad);
+  }
 
   void showDebugOpcode() {
     // show current ASM opcode (and previous one)

@@ -30,25 +30,28 @@ class InstrCall extends InstrBSRT {
 
   // -----------------------------------------------------------------------------------------------------
   void CPURSTp (int p) {
-    int val16 = ((p & 0x07) << 3);
-    this.asmInstr = "CPU RST " + this.hex2(val16); // "hex2" volontaire 
-//    this.setPMTRpCycles(-1, 3, 11, 1, 0);
-    int nextpc = this.reg.getPC(); // We do NOT add Pcycle here
-    this.put16InStack(nextpc);
-    this.reg.setPC(val16);
-    this.comment = "Interruption: ReSTart from " + this.hex4(val16) + "; Stacked " + this.hex4(nextpc);
-    log.logln(this.comment);
+    this.handleRST(p, true);
   }
 
   // -----------------------------------------------------------------------------------------------------
   void RSTp (int p) {
+    this.handleRST(p, false);
+  }
+
+  // -----------------------------------------------------------------------------------------------------
+  void handleRST (int p, boolean fromCPU) {
     int val16 = ((p & 0x07) << 3);
-    this.asmInstr = "RST " + this.hex2(val16); // "hex2" volontaire 
-    this.setPMTRpCycles(-1, 3, 11, 1, 0);
-    int nextpc = this.reg.getPC() + abs(this.Pcycles); // stack the PC of the instr AFTER the CALL
+    this.asmInstr = (fromCPU) ? "CPU " : "";
+    this.asmInstr += "RST " + p;
+    int nextpc = this.reg.getPC();
+    if (!fromCPU) {
+      this.setPMTRpCycles(-1, 3, 11, 1, 0);
+      nextpc += abs(this.Pcycles); // stack the PC of the instr AFTER the CALL, only if NOT from System
+    }
     this.put16InStack(nextpc);
     this.reg.setPC(val16);
-    this.comment = "ReSTart from " + this.hex4(val16) + "; Stacked " + this.hex4(nextpc);
+    this.comment = "ReSTart " + this.hex4(val16) + "; Stacked " + this.hex4(nextpc);
+    log.logln(this.comment);
   }
 
   // -----------------------------------------------------------------------------------------------------

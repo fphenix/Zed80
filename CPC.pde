@@ -2,29 +2,26 @@ class CPC {
   D7 diskette;
   //  RAM ram;
   //  ROM rom;
+  Keyboard kb;
   Z80 z80;
   GateArray ga;
   Firmware fwv;
   PSG psg;
   Memory mem;
+  Pinout pin;
+  Floppy fdc;
 
   int iter = 0;
   int iterMax = -1; //2000000;
   int speed;
   boolean stepForward;
   boolean freerun;
-  boolean bootup = true;
 
   CPC () {
-    this.init(true);
+    this.init();
   }
 
-  CPC (boolean boot) {
-    this.init(boot);
-  }
-
-  void init (boolean boot) {
-    this.bootup = boot;
+  void init () {
     this.stepForward = false;
     this.freerun = false;
 
@@ -33,30 +30,22 @@ class CPC {
     this.z80 = new Z80();
     this.ga = new GateArray();
     this.psg = new PSG();
-    this.diskette = new D7("HEADOVER.DSK");
+    this.kb = new Keyboard();
+    this.pin = new Pinout();
+    this.fdc = new Floppy();
 
     // set References
-    this.z80.setRef(this.mem, this.fwv, this.ga, this.psg);
+    this.z80.setRef(this.mem, this.fwv, this.pin);
     this.fwv.setRef(this.z80, this.ga, this.mem, this.diskette);
     this.ga.setRef(this.z80, this.mem, this.fwv);
     this.mem.setRef(this.fwv);
     this.psg.setRef(this.z80);
+    this.pin.setRef(this.mem, this.ga, this.psg, this.fdc);
+    this.kb.setRef(this.z80.pin, this.psg);
 
+    this.mem.bootUpMem();
     this.mem.RETVectors();
-    if (this.bootup) {
-      this.mem.bootUpMem();
-    } else {
-      this.mem.copyRSTZone();
-    }
     this.z80.initPC(0);
-
-    //this.diskette.readFile();
-    this.diskette.loadFile("HEADOVER.BIN", this.mem);
-    //this.diskette.loadFile("HEADOVER.I", this.ram, 0x4000);
-    //this.diskette.loadFile("HEADOVER.II", this.ram, 0xc000);
-    //this.diskette.loadFile("HEADOVER.III", this.ram);
-
-    this.mem.romDump();
   }
 
   //------------------------------------------------------------------------
@@ -102,6 +91,10 @@ class CPC {
     this.speed = (tspeed < 1) ? 1 : tspeed;
   }
 
+  void setDebugRefresh(int df) {
+    this.ga.setDbgRefresh(df);
+  }
+
   void setShowingDebugMem (int m) {
     this.ga.dbg.setShowingMem(m);
   }
@@ -113,6 +106,11 @@ class CPC {
 
   void setBKPOff () {
     this.z80.reg.setBKPOff();
+  }
+
+  //-----------------------------------------------------------------
+  void attachFloppyDisc (String d7name) {
+    this.fdc.readFloppy(d7name);
   }
 
   //-----------------------------------------------------------------

@@ -1,4 +1,4 @@
-// Diskette
+// Diskette //<>//
 
 // 1 record = 128 bytes
 // 1 sector = 512 bytes
@@ -42,7 +42,21 @@ class D7 {
     this.FileInfo();
     this.BinFileHeaderInfo();
 
-    this.LogFileName = "data/D7LogFile.txt";
+    this.LogFileName = "data/Logs/D7LogFile.txt";
+    this.logFile = createWriter(this.LogFileName);
+  }
+
+  D7 () {
+    this.infoList  = new InfoList[InfoConst.NBPARTS][InfoConst.MAXNBFIELDS];
+    this.logFileON = true;
+
+    this.DiskInfo();
+    this.TrackInfo();
+    this.SectorInfo();
+    this.FileInfo();
+    this.BinFileHeaderInfo();
+
+    this.LogFileName = "data/Logs/D7LogFile.txt";
     this.logFile = createWriter(this.LogFileName);
   }
 
@@ -156,7 +170,17 @@ class D7 {
     }
   }
 
-  void readFile () {
+  int[][][] readFile (String dname) {
+    this.d7Name = "data/D7/" + dname;
+    return this.readFile();
+  }
+
+  final int TRACKMAX = 42;
+  final int SECTORMAX = 11;
+  final int SIZEMAX = 512;
+
+  int[][][] readFile () {
+    int[][][] discData = new int[TRACKMAX][SECTORMAX][SIZEMAX];
     this.fileData = loadBytes(this.d7Name);
     this.fileSize = fileData.length;
 
@@ -164,7 +188,7 @@ class D7 {
       this.log("Reading binary file : " + this.d7Name);
     }
 
-    this.readStateMachine();
+    discData = this.readStateMachine();
     this.directoryData();
     this.getFilesHeaderInfo();
     log.logln("Done reading! " + this.d7Name);
@@ -175,10 +199,12 @@ class D7 {
       this.logFile.flush();
       this.logFile.close();
     }
+    return discData;
   }
 
   /* read the tracks and sectors info */
-  void readStateMachine () {
+  int[][][] readStateMachine () {
+    int[][][] discData = new int[TRACKMAX][SECTORMAX][SIZEMAX];
     int filePointer = 0;
     int inPart = InfoConst.INPARTDISK;
     int inField = InfoConst.FORMATID;
@@ -261,6 +287,10 @@ class D7 {
           tmpHalfblock = this.getHalfBlockfromTrackSector(tmpTrack, tmpSectorId);
           log("Sector Data saved in Block "+tmpBlock+","+tmpHalfblock+" - Track:"+tmpTrack+", Sector:0x"+hex(tmpSectorId, 2));
           this.dataBlocks.add(new DataBlock(tmpBlock, tmpHalfblock, fieldData));
+println(tmpTrack,currSector, tmpSectorId, tmpBlock, tmpHalfblock, fieldData.size());
+          for (int bp = 0; bp < fieldData.size(); bp++) {
+            discData[tmpTrack][currSector][bp] = fieldData.get(bp);
+          }
           // Note : the first 2 blocks (4 sectors) are the files directory information
           if (tmpBlock < 2) {
             int idx = (2*tmpBlock) + tmpHalfblock;
@@ -340,6 +370,7 @@ class D7 {
         }
       }
     }
+    return discData; // [track][sector][bytepos];
   }
 
   /* Read the files info from the file allocation table (4 first sectors) */
@@ -679,7 +710,7 @@ class D7 {
       json.setJSONObject(idx, currfile);
     }
 
-    saveJSONArray(json, "./data/D7files.json");
+    saveJSONArray(json, "./data/JSON/D7files.json");
   }
 
   void loadFile(String filename, Memory mem) {
@@ -691,7 +722,7 @@ class D7 {
     JSONArray json;
     JSONObject currfile;
     boolean found = false;
-    json = loadJSONArray("./data/D7files.json");
+    json = loadJSONArray("./data/JSON/D7files.json");
     for (int i = 0; i < json.size(); i++) {
       currfile = json.getJSONObject(i);
       String fname = currfile.getString("fname");
@@ -717,7 +748,7 @@ class D7 {
     JSONArray json;
     JSONObject currfile;
     boolean found = false;
-    json = loadJSONArray("./data/D7files.json");
+    json = loadJSONArray("./data/JSON/D7files.json");
     for (int i = 0; i < json.size(); i++) {
       currfile = json.getJSONObject(i);
 

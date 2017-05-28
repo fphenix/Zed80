@@ -16,7 +16,7 @@
 // active low, duration of the low pulse: 1.4us (1.4 NOP);
 
 class GateArray {
-  int mode;
+  int mode = 1;
   int[] pen = new int[16];
   int[] penAlt = new int[16];
   int border, borderAlt;
@@ -26,6 +26,7 @@ class GateArray {
   int pixIndex;
   int cpcWidth;
   int cpcHeight;
+  int debugRefresh;
 
   int borderColor = color(0, 32, 0);
 
@@ -112,6 +113,7 @@ class GateArray {
 
     this.initColor();
     this.frame = 0;
+    this.debugRefresh = 1;
 
     this.screen = createImage(1, 1, RGB);
     this.setMode(1);
@@ -154,6 +156,10 @@ class GateArray {
     this.screen.resize(this.nbcolfullscreen, this.nbrowfullscreen);
     this.screen.loadPixels();
   }
+  
+  void setDbgRefresh(int df) {
+    this.debugRefresh = df;
+}
 
   // ---------------------------------------------------------------------------------------
   void calcScreenSize () {
@@ -338,7 +344,7 @@ class GateArray {
     } else {
       this.refreshed = false;
     }
-    if ((this.dbg.showDebug) && ((this.frame % 100) == 0)) {
+    if ((this.dbg.showDebug) && ((this.frame % this.debugRefresh) == 0)) {
       this.dbg.showDebugScreen();
     }
   }
@@ -737,19 +743,20 @@ class GateArray {
     int bytenb = this.calcByteNb(x);
     int pixnb = this.calcPixInByte(x);
     int byteaddr = this.calcByteAddr(ylinenb, bytenb);
-    int byteval = this.mem.peek(byteaddr);
+    int byteval = this.mem.basepeek(byteaddr);
     int pixval = this.getPixValInByte(byteval, pixnb);
     return pixval;
   }
 
   // write the pixel color value of pixel @ (x, y) depending on the mode
-  void setPixValue (int x, int ylinenb, int pixval) {
+/*  void setPixValue (int x, int ylinenb, int pixval) {
     int bytenb = this.calcByteNb(x);
     int pixnb = this.calcPixInByte(x);
     int byteaddr = this.calcByteAddr(ylinenb, bytenb);
-    int byteval = this.mem.peek(byteaddr);
+    int byteval = this.mem.basepeek(byteaddr);
     this.mem.poke(byteaddr, this.setPixValInByte(byteval, pixnb, this.clampPixVal(pixval)));
   }
+*/
 
   // ====================================================================
   String hex2 (int val8) {

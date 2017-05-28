@@ -2,6 +2,7 @@
 
 class Firmware {
   VectorTab vt;
+  Memory mem;
 
   Firmware () {
     this.vt = new VectorTab();
@@ -9,54 +10,24 @@ class Firmware {
 
   void setRef(Z80 zref, GateArray garef, Memory memref, D7 d7ref) {
     this.vt.setRef(zref, garef, memref, d7ref);
+    this.mem = memref;
   }
 
+  // vectors redefined to be handled mannually:
   boolean isVector(int v) {
-    switch (v) {
-    case 0xBA10 :
-    case 0xBC06 :
-    case 0xBC08 :
-    case 0xBC0B :
-    case 0xBC0E :
-    case 0xBC32 :
-    case 0xBC38 :
-    case 0xBC3E :
-    case 0xBC77 :
-    case 0xBC7A :
-    case 0xBC83 : 
-    case 0xBCCE :
-      return true;
-    default:
+//    switch (v) {
+//    case 0xBC77 :
+//    case 0xBC7A :
+//    case 0xBC83 :
+//      this.mem.poke(v, 0xC9);
+//      return true;
+//    default :
       return false;
-    }
+//    }
   }
 
   void vectorTable (int addr) {
-    switch (addr) {
-    case 0xBA10 : 
-      this.vt.vecBA10(); 
-      break;
-    case 0xBC06 :
-      this.vt.vecBC06(); 
-      break;
-    case 0xBC08 :
-      this.vt.vecBC08(); 
-      break;
-    case 0xBC0B :
-      this.vt.vecBC0B(); 
-      break;
-    case 0xBC0E :
-      this.vt.vecBC0E(); 
-      break;
-    case 0xBC32 :
-      this.vt.vecBC32(); 
-      break;
-    case 0xBC38 :
-      this.vt.vecBC38(); 
-      break;
-    case 0xBC3E :
-      this.vt.vecBC3E(); 
-      break;
+/*    switch (addr) {
     case 0xBC77 : 
       this.vt.vecBC77(); 
       break;
@@ -66,13 +37,11 @@ class Firmware {
     case 0xBC83 : 
       this.vt.vecBC83(); 
       break;
-    case 0xBCCE : 
-      this.vt.vecBCCE(); 
-      break;
     default : 
       this.vt.vecNotImp(addr);
     }
     log.logln("Firmware Call to Vector " + this.vt.hex4(addr) + " : " + this.vt.vectTitle);
+    */
   }
 
   // Vectors table
