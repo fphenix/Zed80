@@ -205,11 +205,14 @@ class Pinout {
   // ********************************************************************************************************
   // **             Floppy Disc unit
   // ********************************************************************************************************
+  // Write     : 0xFA7E/7F : FDD motor control
+  // Read      : 0xFB7E    : FDC Main Status Register
+  // Read/Write: 0xFB7F    : Data Register (alse 7E in Write)
 
   void accessFloppySel() {
     this.selRegInfo = "Floppy Disc Controller";
     int sel = ((this.ADDR & 0x0100) >> (8 - 1)) | ((this.ADDR & 0x0001) >> 0);
-    if  (this.WR_b == 0) { // Write
+    if  (this.WR_b == 0) { // Write : data from Z80 to FDC
       if ((sel & 0x02) == 0) { // 0xFA7E & FA7F (WR)
         // Floppy disc drive motor control
         this.fdc.writeMotorCtrl(this.DATA);
@@ -217,15 +220,15 @@ class Pinout {
         // Data register of FDC
         this.fdc.writeData(this.DATA);
       }
-    } else { // Read
+    } else { // Read : data from FDC to Z80
       if ((sel & 0x03) == 0x02) { // 0xFB7E (RD)
         // Main status register of FDC
         this.DATA = this.fdc.readStatus();
       } else if ((sel & 0x03) == 0x03) { // 0xFB7F (RD)
         // Data register of FDC
-       this.DATA = this.fdc.readData();
+        this.DATA = this.fdc.readData();
       } else { // 0xFA7x (RD)
-        return; // Unused 
+        return; // Unused
       }
     }
   }
