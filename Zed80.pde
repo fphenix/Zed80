@@ -1,7 +1,8 @@
-import java.awt.event.KeyEvent; //<>// //<>//
+import java.awt.event.KeyEvent;
 
 CPC cpc;
 Log log;
+Log dbglog;
 
 boolean test = false;
 
@@ -13,22 +14,27 @@ void setup () {
   pixelDensity(1);
 
   log = new Log(); // Create a new file in the sketch directory
+  dbglog = new Log("DebugFDC.txt"); // Create a new file in the sketch directory
 
   if (test) {
     cpc = new CPC();
-    log.logModeON();
+    log.logModeON(0x4006);
+    dbglog.logModeON();
     cpc.setPC(0x4000);
     cpc.setSP(0x0000);
     cpc.setShowingDebugMem(0x0000);
     cpc.setBKPOff(); // off
-    cpc.mem.testASM("TESTPPI.BIN");
+    cpc.mem.testASM("TESTD7.BIN");
+    cpc.attachFloppyDisc("HEADOVER.DSK");
     //cpc.setBKP(0x04F7); // on
     cpc.turnon();
-    cpc.setSpeed(1000);
+    cpc.setSpeed(2000);
+    cpc.setDebugRefresh(50);
     cpc.step();
   } else {
     cpc = new CPC();
-    log.logModeON();
+    log.logModeON(0xBC9B);
+    dbglog.logModeON();
     //log.logModeON(0xBEA7);
     cpc.setPC(0x0);
     cpc.setSP(0x0);

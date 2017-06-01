@@ -18,6 +18,8 @@ class Pinout {
   int WR_b; // Write
   boolean POWER5V = true;
   boolean GROUND = false;
+  
+  final int portBdefaultValue = 0x5E; // 50Hz, "Amstrad", Printer not ready
 
   boolean selGA = false;
   boolean selRAM = false;
@@ -247,7 +249,7 @@ class Pinout {
 
   int portADirRead = 0;
   int currPortAdata = 0x00;
-  int currPortBdata = 0x1E;
+  int currPortBdata = this.portBdefaultValue;
   int currPortCdata = 0x00;
   int KbLineSel = 0;
   int[] kbData = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
@@ -265,15 +267,16 @@ class Pinout {
       break;
     case 1: // 0xF5xx, PortB VSYNC, etc, RW
       this.selRegInfo = "PPI Port B: VSYNC, etc";
-      // b7: CAS_IN
-      // b6: PRN.BUSY
-      // b5: /EXP
-      // b4:1: 50Hz, Amstrad => b1111 (ReadOnly)
+      // b7: CAS_IN : cassette data read
+      // b6: PRN.BUSY ; 1 = not ready; 0 = ready
+      // b5: /EXP : expansion port
+      // b4: 1: 50Hz (read only)
+      // b3:1 : Amstrad => b'111 (ReadOnly)
       // b0: CRTC VCYNC
       if (this.WR_b == 0) { // Write
-        this.currPortBdata = this.DATA | 0x1E;
+        this.currPortBdata = this.DATA | this.portBdefaultValue;
       } else { // Read
-        this.DATA = 0x1E + this.ga.VSYNC;
+        this.DATA = this.portBdefaultValue | this.ga.VSYNC;
       }
       break;
     case 2: // 0xF6xx, Port C: PSG, Cassette, Keyboard, RW
@@ -291,6 +294,7 @@ class Pinout {
       } // else : must have (this.WR_b == 0) from here
       // if b7 = 1
       if ((this.DATA & 0x80) == 0x80) {
+        // PPI control reg:
         //Bit 0    IO-Cl    Direction for bits[3:0] of Port C (always 0=Output in CPC) : Port Cl
         //Bit 1    IO-B     Direction for bits[7:4] of Port B (always 1=Input in CPC)
         //Bit 2    MS0      Mode for Port B and Port Cl       (always zero (I/O Mode 0) in CPC)
@@ -310,7 +314,7 @@ class Pinout {
           this.selRegInfo += " (PortA Output (e.g write PSG))"; // 0x82
         }
         this.currPortAdata = 0x00;
-        this.currPortBdata = 0x1E; // 0x1E, 0x7E
+        this.currPortBdata = this.portBdefaultValue;
         this.currPortCdata = 0x00;
       } else { // b7 = 0
         // Bit 0       New value for the specified bit (0=Clear, 1=Set)

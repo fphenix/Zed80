@@ -1,8 +1,11 @@
-/* Floppy Disc Controller UPD765A */ //<>// //<>// //<>// //<>// //<>// //<>//
+/* Floppy Disc Controller UPD765A */
+// 3'' floppy discs for CPC have:
 // 1 record = 128 bytes
-// 1 sector = 512 bytes (type 2)
+// 1 sector = 512 bytes (type 2)   (a "slice"); sector interleave 2:1; 360 sectors
 // 1 block  = 2 sectors
-// 1 track  = 9 sectors  ; cylinder = track
+// 1 track  = 9 sectors ; cylinder = track (but both heads)
+// Single sided ; Double density (= 9 sectors / track) = MFM mode
+// 40 or 41 tracks : System format: 169 Kbytes file capacity, Data format: 2Kb for Directory info, 178KB capacity)
 class Floppy {
   D7 diskette;
 
@@ -14,14 +17,16 @@ class Floppy {
   final int STATREG_FDCWAITINGFORZ80READ = 6; // bit 6, 1: FDC waits for Z80 to read data, else if 0, FDC waiting data from CPU
   final int STATREG_PHASEINSTRUCTION = 5; // bit 5, if 1: Instruction Phase, else PHASERESULTAT
   final int STATREG_INSTRUCTIONENCOURS = 4; // bit 4, Instruction en cours, else FDC ready
+  final int STATREG_DRIVE1_BUSY = 1; // bit 0 : drive 0 busy (1) or ready (0)
   final int STATREG_DRIVE0_BUSY = 0; // bit 0 : drive 0 busy (1) or ready (0)
 
   int   fdcStatusReg; // Main status register for Floppy Disc Controller
   int[] secondaryStatusRegs = new int[7]; // ST0 to ST6 registers
 
-  final int TRACKMAX = 42;
-  final int SECTORMAX = 11;
-  final int SIZEMAX = 512;
+  final int TRACKMAX = 40; // 0 à 39; catalogue (2KB, 64 entry max) : Piste0, secteurs 0xC1 à 0xC4 pour AmsDos. Catalogue en Piste 2 0x41 à 0x44 pour CP/M avec info system en Piste 0, secteur &41, &42, &48, &49 et Piste 1 secteur &41, &46, &42, &47, &43, &48, &44, &49, &45.
+  final int SECTORMAX = 9; // 9 (or 11?)
+  final int SIZEMAX = 512; // type 2 used for CPC
+  final int formatByte = 0xE5;
   int[][][] discData = new int[TRACKMAX][SECTORMAX][SIZEMAX];
   int[][][] sectorInfo = new int[TRACKMAX][SECTORMAX][4];
   final int DISCHEADERLENGTH = 256;
@@ -31,10 +36,10 @@ class Floppy {
   int[] discTracks = new int[TRACKMAX-2];
 
   int posInSector = 0;
-  int sectorStart;
+  int sectorStart = 0xC1; // 0xC1 : AmsDos; 0x41 : CP/M
   int sectorEnd;
   int discNbTracks;
-  int discTrack;
+  int discTrack = 0;
   boolean motorToggled = false;
 
   int data;
@@ -63,7 +68,7 @@ class Floppy {
 
   final int INSTR_SPECIFYTRKDELAY = 0x03; 
   final int PARAM_SPECIFYTRKDELAY = 2; // 8b'dddd0000 et 0x00 
-  final int RET_SPECIFYTRKDELAY = 0; // none
+  final int RET_NONE = 0; // none
 
   final int INSTR_QUERYSTATE = 0x04 ; // query drive status
   final int PARAM_QUERYSTATE = 1; // ID lecteur (0x00 pour drive A)
@@ -71,11 +76,11 @@ class Floppy {
 
   final int INSTR_RECALIBRAGE = 0x07 ; // instruction n° 7
   final int PARAM_RECALIBRAGE = 1; // ID lecteur
-  final int RET_RECALIBRAGE = 0; // none, mais va en piste 0
+  // final int RET_NONE = 0; // none, mais va en piste 0
 
-  final int INSTR_INTSTATE = 0x08 ; // lecture interrupt
-  final int PARAM_INTSTATE = 0; // none
-  final int RET_INTSTATE = 2; // ST0, PCN: N° de piste en cours
+  final int INSTR_INTSTATUS = 0x08 ; // lecture interrupt
+  final int PARAM_NONE = 0; // none
+  final int RET_INTSTATUS = 2; // ST0, PCN: N° de piste en cours
 
   final int INSTR_IDSECTSUIV = 0x0A; // read id
   final int PARAM_IDSECTSUIV = 1; // ID lecteur 
@@ -88,7 +93,6 @@ class Floppy {
   final int RET_SEEKTRACK = 0; // none
 
   final int INSTR_VERSION = 0x10 ; 
-  final int PARAM_VERSION = 0; // none
   final int RET_VERSION = 1; // 0x80 for 765A (ST0)
 
   // ------------------------------------------------------------------------------
@@ -128,12 +132,14 @@ class Floppy {
   // ---------------------------------------------------------------------------------
   // Read the Main Status Register 0xFB7E (FDC to Z80)
   int readStatus () { // 0xFB7E(RD)
+    dbglog.logln("FDC read main stat reg: 0x" + hex(this.fdcStatusReg, 2));
     return this.fdcStatusReg;
   }
 
   // Write Motor Control Register: 0xFA7E (Z80 to FDC)
   void writeMotorCtrl(int dta) { // 0xFA7E & FA7F (WR)
     // tout ou rien : soit on allume tous les moteurs soit on les eteints tous
+    dbglog.logln("FDC Motor: 0x" + hex(dta, 2));
     this.motorOn = dta & 0x01;
     this.motorToggled = true;
     this.motorCount = 500;
@@ -153,11 +159,14 @@ class Floppy {
   // ---------------------------------------------------------------------------------
   // Read Data from the data port (0xFB7F) (FDC to Z80)
   int readData () { // 0xFB7F (RD)
-    return this.readStateMachine();
+    int dta = this.readStateMachine();
+    dbglog.logln("FDC Data Read: 0x" + hex(dta, 2));
+    return dta;
   }
 
   // write Data on the port 0xFB7F (Z80 to FDC)
   void writeData (int dta) { // 0xFB7F (WR)
+    dbglog.logln("FDC Data Write: 0x" + hex(dta, 2));
     this.writeStateMachine(dta);
   }
 
@@ -215,20 +224,32 @@ class Floppy {
   int discOn;
   int trackStart;
   int[] paramData = new int[8];
+
   boolean inInstruction = false;
   boolean mtCommand = false;
-  boolean gotAllParams = true;
+  boolean gotAllParams = false;
   boolean execute = false;
-  boolean result = false;
+  boolean resultToSend = false;
 
   // ---------------------------------------------------------------------------------
   void getCommand (int val) {
     this.mtCommand = (val & 0x80) > 0;
     this.command = val & 0x1F;
 
-    this.setBit_statReg(STATREG_INSTRUCTIONENCOURS); // b4
-
+    dbglog.logln("Command = 0x" + hex(this.command, 2));
+    this.inInstruction = true;
+    this.gotAllParams = false;
     this.execute = true;
+
+    this.resultPointer = 0;
+    this.dataPointer = 0;
+
+    this.fdcStatusReg = 0x00; // set to 0x90 below
+    this.setBit_statReg(STATREG_DATAPORTWAITING); // set bit 7 : data port ready and...
+    this.clearBit_statReg(STATREG_FDCWAITINGFORZ80READ); // clear bit 6 : data sent from Z80 to FDC
+    this.clearBit_statReg(STATREG_PHASEINSTRUCTION); // clear bit 5 : b5 is only set during the execution phase
+    this.setBit_statReg(STATREG_INSTRUCTIONENCOURS); // bit 4 set so no other command could be sent
+
     switch (this.command) {
 
     case INSTR_LECTURETRK : // 2 : read diag / read track
@@ -239,23 +260,20 @@ class Floppy {
       // case INSTR_SCANEQUAL : // not yet supported
       // case INSTR_SCALOWORNEQUAL : // not yet supported
       // case INSTR_SCAHIGHORNEQUAL : // not yet supported
-      this.nbParams = PARAM_REGULAR; // 7: sector info C, H, R, N, EOT, GPL, DTL
+      this.nbParams = PARAM_REGULAR; // 8: Drive ID, sector info C, H, R, N, EOT, GPL, DTL
       this.nbReturn = RET_REGULAR; // 7: ST0 to 2, C, H, R, N
       break;
 
     case INSTR_SPECIFYTRKDELAY : // 3 : specify
       this.nbParams = PARAM_SPECIFYTRKDELAY; // 2 SRT+HUT et HLT+ND
       this.execute = false;
-      this.nbReturn = RET_SPECIFYTRKDELAY; // none
-      this.clearBit_statReg(STATREG_INSTRUCTIONENCOURS); // b4
-      this.clearBit_statReg(STATREG_FDCWAITINGFORZ80READ); // b6
+      this.nbReturn = RET_NONE; // none
       break;
 
     case INSTR_QUERYSTATE : // 4; drive status / sense drive
       this.nbParams = PARAM_QUERYSTATE; // 1: Lecteur ID
       this.execute = false;
       this.nbReturn = RET_QUERYSTATE; // ST3
-      this.setBit_statReg(STATREG_FDCWAITINGFORZ80READ); // b6
       this.secondaryStatusRegs[3] = this.driveId | 0x28;
       if (this.discTrack == 0) {
         this.secondaryStatusRegs[3] |= 0x10;
@@ -264,20 +282,21 @@ class Floppy {
 
     case INSTR_RECALIBRAGE : // 7; recalibrate
       this.nbParams = PARAM_RECALIBRAGE; // 1: ID lecteur
-      this.nbReturn = RET_RECALIBRAGE; // none
+      this.nbReturn = RET_NONE; // none
       this.execute = false; // in fact "execute = true", but the execution is done in getParam() instead
+      this.secondaryStatusRegs[0] = 0x00; // b5 = 0
       break;
 
-    case INSTR_INTSTATE : // 8; sense the interrupt state
-      this.nbParams = PARAM_INTSTATE; // none
+    case INSTR_INTSTATUS : // 8; sense the interrupt state
+      this.nbParams = PARAM_NONE; // none
       this.execute = false;
-      this.nbReturn = RET_INTSTATE; // 2: ST0; PCN; n°PisteEnCours
-      this.fdcStatusReg = 0x00; // 0x80 below!
-      this.setBit_statReg(STATREG_DATAPORTWAITING); // b0
+      this.setBit_statReg(STATREG_FDCWAITINGFORZ80READ); // set bit 6 : Z80 will now be reading
+      this.nbReturn = RET_INTSTATUS; // 2: ST0; PCN; n°PisteEnCours
+      this.fdcInt = 0;
       break;
 
     case INSTR_IDSECTSUIV : // A : read id
-      this.nbParams = PARAM_IDSECTSUIV;
+      this.nbParams = PARAM_IDSECTSUIV; // Drive Id
       this.nbReturn = RET_REGULAR;
       break;
 
@@ -290,46 +309,53 @@ class Floppy {
       this.nbParams = PARAM_SEEKTRACK; // 2: Lecteur ID et NCN (n°Piste)
       this.nbReturn = RET_SEEKTRACK; // none
       this.execute = false; // in fact "execute = true", but the execution is done in getParam() instead
-      this.clearBit_statReg(STATREG_INSTRUCTIONENCOURS); // b4
-      this.setBit_statReg(STATREG_DRIVE0_BUSY); // b0
+      this.secondaryStatusRegs[0] = 0x00; // b5 = 0
       break;
 
     case INSTR_VERSION : //  10
-      this.nbParams = PARAM_VERSION; // none
+      this.nbParams = PARAM_NONE; // none
       this.execute = false;
+      this.setBit_statReg(STATREG_FDCWAITINGFORZ80READ); // set bit 6 : Z80 will now be reading
       this.nbReturn = RET_VERSION; // ST0 = 0x80 for 765A
       break;
 
     default: // INVALID
       this.nbParams = 0; // none
+      this.fdcStatusReg = 0x81;
       this.execute = false;
       this.nbReturn = 1; // ST0 = 0x80 for 765A
     }
-    this.inInstruction = true;
-    this.fdcStatusReg = 0x00;
-    this.setBit_statReg(STATREG_DATAPORTWAITING); // set bit 7
-    this.clearBit_statReg(STATREG_FDCWAITINGFORZ80READ); // clear bit 6 : data from Z80 to FDC
-    this.clearBit_statReg(STATREG_PHASEINSTRUCTION); // clear bit 5 : b5 is only set during the execution phase
-    this.setBit_statReg(STATREG_INSTRUCTIONENCOURS); // bit 4 set so no other command could be sent
-    this.gotAllParams = false;
-    this.resultPointer = 0;
-    this.dataPointer = 0;
+    this.gotAllParams = (this.nbParams > 0) ? false : true;
+    this.resultToSend = (this.nbReturn > 0) ? true : false;
   }
 
   int srt = 0xE;
   int hut, hlt, nd;
   int eot, gpl, dtl, filler;
-  int sectorC, sectorH, sectorR, sectorN, sectorSizeType, sectorPerTrack;
+  int sectorC; // n° de piste
+  int sectorH = 0; // tête 0 ou 1; cur CPC toujours 0
+  int sectorR = 0xC1; // n° du secteur en cours
+  int sectorN = 2; // taille du secteur
+  int sectorSizeType, sectorPerTrack;
 
   // ---------------------------------------------------------------------------------
 
   void getParam (int val) {
     if (this.nbParams > 0) {
+      this.setBit_statReg(STATREG_DATAPORTWAITING); // set bit 7
+      this.clearBit_statReg(STATREG_FDCWAITINGFORZ80READ); // bit 6 : 0 = Z80 Write to FDC
+      this.clearBit_statReg(STATREG_PHASEINSTRUCTION); // bit 5
       this.paramData[this.nbParams - 1] = val; // paramData[0] is the last param received
       this.nbParams--;
+      dbglog.logln("Param = 0x" + hex(val, 2));
     }
     if (this.nbParams == 0) {
+      dbglog.logln("Got all params");
       this.gotAllParams = true;
+      // this.clearBit_statReg(STATREG_DATAPORTWAITING); // clear bit 7 : data port not ready (FDC munching parameters)...
+      this.setBit_statReg(STATREG_FDCWAITINGFORZ80READ); // bit 6 : 1 : FDC and Z80 in sync!
+      this.setBit_statReg(STATREG_PHASEINSTRUCTION); // bit 5
+      this.setBit_statReg(STATREG_INSTRUCTIONENCOURS); // bit 4 set so no other command could be sent
 
       switch (this.command) {
       case INSTR_LECTURETRK : // 2 : read diag
@@ -340,14 +366,17 @@ class Floppy {
         // case INSTR_SCANEQUAL : // not yet supported
         // case INSTR_SCALOWORNEQUAL : // not yet supported
         // case INSTR_SCAHIGHORNEQUAL : // not yet supported
-        this.driveId = this.paramData[7];
-        this.sectorC = this.paramData[6]; // n° de piste (0 to 80-ish)
+        this.driveId = this.paramData[7]; // Drive Id
+        this.sectorC = this.paramData[6]; // n° de piste (0 to 41)
         this.sectorH = this.paramData[5]; // n° de tête (0 or 1)
         this.sectorR = this.paramData[4]; // n° du secteur (De &C1 à &C9 pour DATA ou  &41 à &49 pour CPM)
-        this.sectorN = this.paramData[3]; // Taille du secteur in bytes
+        this.sectorN = this.paramData[3]; // Taille du secteur (in bytes or type (2)???); probably the latter as 512 doesn't fit in a 8b reg!
         this.eot = this.paramData[2]; // end of track
         this.gpl = this.paramData[1];
-        this.dtl = this.paramData[0];      
+        this.dtl = this.paramData[0];
+        this.discTrack = this.sectorC;
+        this.sectorStart = this.sectorR;
+        this.sectorEnd = this.eot;
         break;
 
       case INSTR_SPECIFYTRKDELAY : // 3
@@ -355,7 +384,6 @@ class Floppy {
         this.hut = (this.paramData[1] & 0x0F);
         this.hlt = (this.paramData[0] & 0xFE) >> 1;
         this.nd  = (this.paramData[0] & 0x01);
-        this.clearBit_statReg(STATREG_FDCWAITINGFORZ80READ);
         break;
 
       case INSTR_QUERYSTATE : // 4; drive status
@@ -397,19 +425,62 @@ class Floppy {
       this.getCommand(val);
 
       // sinon on est dans une instruction; on lit tous les parametres un à un
-    } else if (!this.gotAllParams) {
-      this.getParam(val);
-    }
-
-    if (this.execute) {
-      this.getDataFromZ80(val);
     } else {
-      this.result = (this.nbReturn > 0);
+      if (!this.gotAllParams) {
+        this.getParam(val);
+      } else { // if (this.execute) {
+        this.getDataFromZ80(val); // Z80 Writing to FDC
+      }
     }
+    this.isInstrComplete();
+    dbglog.logFlush();
+  }
+
+  // ---------------------------------------------------------------------------------
+  int readStateMachine () {
+    int tmp;
+    if (this.execute) {
+      tmp = this.sendDataToZ80(); // Z80 reading from FDC
+    } else { // if (this.resultToSend) {
+      tmp = this.sendResultToZ80();
+    }
+    this.isInstrComplete();
+    dbglog.logFlush();
+    return tmp;
+  }
+
+  // ---------------------------------------------------------------------------------
+  boolean isInstrComplete () {
+    boolean ret = 
+      (this.inInstruction && 
+      ((this.nbParams == 0) || this.gotAllParams) && 
+      !this.execute && 
+      !this.resultToSend );
+    String dbg = 
+      "in instr:" + this.inInstruction + ", " + 
+      "nbparam=0? " + (this.nbParams == 0) + ", " + 
+      "gotallparam:"+this.gotAllParams + ", " + 
+      "exec:"+this.execute + ", " + 
+      "nbret=0? " + (this.nbReturn == 0)  + ", " + 
+      "restosend: " + this.resultToSend;
+
+    if (ret) {
+      this.inInstruction = false;
+      this.setBit_statReg(STATREG_DATAPORTWAITING); // set bit 7 : data port ready
+      this.clearBit_statReg(STATREG_FDCWAITINGFORZ80READ); // clear bit 6 : data sent from Z80 to FDC
+      this.clearBit_statReg(STATREG_PHASEINSTRUCTION); // clear bit 5 : not executing
+      this.clearBit_statReg(STATREG_INSTRUCTIONENCOURS); // bit 4 clear : can accept new commands
+      this.secondaryStatusRegs[0] = 0x20; // b5 = 1
+      dbglog.logln("Command completed : " + dbg);
+    }
+    return ret;
   }
 
   // ---------------------------------------------------------------------------------
   void getDataFromZ80 (int val) {
+    this.setBit_statReg(STATREG_DATAPORTWAITING); // set bit 7
+    this.clearBit_statReg(STATREG_FDCWAITINGFORZ80READ); // bit 6 reset : Z80 Writing
+    this.setBit_statReg(STATREG_PHASEINSTRUCTION); // set bit 5 : Execution phase
     switch (this.command) {
     case INSTR_ECRITURESEC : // 5; write sector
       // case INSTR_ECRITURESECEFF : // 9; write delected sector
@@ -425,38 +496,74 @@ class Floppy {
     }
   }
 
+  // Convert Sector Id like "0xC1, 0xC9 or 0x42, etc..." to sector number like "0, 8 or 1, etc...."
+  int convSectId2Num (int sid) {
+    return ((sid & 0x0F) - 1);
+  }
+
+  int wrapIncrSect (int sect) {
+    int msk = sect & 0xC0;
+    int t = (sect + 1) & 0x3F;
+    return (msk | ((t >= SECTORMAX) ? 1 : t));
+  }
+
   // ---------------------------------------------------------------------------------
   int sendDataToZ80 () {
     int databyte;
+    int sectorNum, secEndNum;
+    String dbgstr = "";
 
-    this.dataPointer++;
+    this.setBit_statReg(STATREG_DATAPORTWAITING); // set bit 7
+    this.setBit_statReg(STATREG_FDCWAITINGFORZ80READ); // bit 6 set : Z80 Reading
+    this.setBit_statReg(STATREG_PHASEINSTRUCTION); // set bit 5 : Execution phase
 
     switch (this.command) {
     case INSTR_LECTURESEC : // 6; read sector
       // case INSTR_LECTURESECEFF : // C: read deleted sector
-      databyte = this.discData[this.discTrack][this.sectorStart-1][this.dataPointer];
+      // fetch next byte
+      sectorNum = this.convSectId2Num(this.sectorStart);
+      secEndNum = this.convSectId2Num(this.sectorEnd);
+      dbglog.logln("Reading track : " + this.discTrack + ", sector : 0x" + hex(this.sectorStart, 2) + " (#" + sectorNum + ") , data byte pos : " + this.dataPointer);
+      databyte = this.discData[this.discTrack][sectorNum][this.dataPointer]; // sectorStart C1 to C9, but for the field we need 0 to 8
+      dbgstr = hex(databyte, 2) + " ";
+      this.dataPointer++;
+      // si dernier byte du secteur
       if (this.dataPointer == SIZEMAX) {
-        if ((this.sectorStart & 0x0F) == (this.sectorEnd & 0x0F)) {
+        // si dernier secteur alors fin de lecture
+        if (sectorNum == secEndNum) {
           this.fdcInt = 1;
           this.discOn = 0;
+          this.execute = false;
+          dbglog.logln(dbgstr);
+          // sinon change de secteur et continue
         } else {
           this.dataPointer = 0;
           this.sectorStart++;
-          if ((this.sectorStart & 0x0F) == (this.discTracks[this.discTrack] + 1)) {
+          sectorNum = this.convSectId2Num(this.sectorStart);
+          if (sectorNum == SECTORMAX) { //(this.discTracks[this.discTrack] + 1)) {
             if (this.mtCommand) { // MultiTrack
               this.discTrack++;
+              if (this.discTrack == TRACKMAX) {
+                this.execute = false;
+                this.fdcInt = 1;
+                this.discOn = 0;
+                dbglog.logln(dbgstr);
+              }
             }
-            this.sectorStart = 0xC1;
+            this.sectorStart = this.wrapIncrSect(this.sectorStart & 0xC0); // reinit sector to 0xC1 (AmsDos) or 0x41 (CP/M)
+            sectorNum = this.convSectId2Num(this.sectorStart);
           }
-          this.realStart = 0;
-          for (int sect = 0; sect < SECTORMAX; sect++) {
-            if ((this.sectorInfo[this.trackStart][sect][2] & 0x0F) == (this.sectorStart & 0x0F)) {
-              this.realStart = sect;
-              break;
-            }
-          }
+          /*      this.realStart = 0;
+           for (int sect = 0; sect < SECTORMAX; sect++) {
+           if ((this.sectorInfo[this.trackStart][sect][2] & 0x0F) == sectorNum) {
+           this.realStart = sect;
+           break;
+           }
+           }
+           */
         }
       }
+      dbglog.logln("Reading : 0x" + hex(databyte, 2) + " at dataPointer = " + this.dataPointer);
       return databyte;
       //break;
 
@@ -465,8 +572,8 @@ class Floppy {
       //     break;
 
     case INSTR_IDSECTSUIV : // A : read id
-      // 1 byte
-      return 0x00;
+      this.execute = false;
+      return this.wrapIncrSect(this.sectorStart);
       // break;
 
     default:
@@ -480,22 +587,46 @@ class Floppy {
 
   // ---------------------------------------------------------------------------------
   int sendResultToZ80 () {
+    this.setBit_statReg(STATREG_FDCWAITINGFORZ80READ); // bit 6 set : Z80 Reading
+    this.clearBit_statReg(STATREG_PHASEINSTRUCTION); // clear bit 5 : Execution phase finished
     this.resultPointer++;
     if (this.resultPointer == this.nbReturn) {
-      this.result = false;
+      this.resultToSend = false;
     }
+    dbglog.logln("Send result");
     switch (this.command) {
     case INSTR_LECTURESEC : // 6; read sector
       // case INSTR_LECTURESECEFF : // C: read deleted sector
     case INSTR_ECRITURESEC : // 5; write sector
       // case INSTR_ECRITURESECEFF : // 9; write delected sector
     case INSTR_LECTURETRK : // 2 : read diag
-    case INSTR_IDSECTSUIV : // A : read id
     case INSTR_FORMAT : // D ; format (write)
       // case INSTR_SCANEQUAL : // not yet supported
       // case INSTR_SCALOWORNEQUAL : // not yet supported
       // case INSTR_SCAHIGHORNEQUAL : // not yet supported
       // ST0, ST1, ST2, SectorC, H, R, N
+      switch (this.resultPointer) {
+      case 1 :
+        this.secondaryStatusRegs[0] = 0x20 + this.driveId;
+        return this.secondaryStatusRegs[0];
+      case 2 :
+        this.secondaryStatusRegs[1] = 0x00;
+        return this.secondaryStatusRegs[1];
+      case 3 :
+        this.secondaryStatusRegs[2] = 0x00;
+        return this.secondaryStatusRegs[2];
+      case 4 :
+        return this.discTrack; // sector C (current track nb)
+      case 5 :
+        return this.head; // sector H : 0x00
+      case 6 :
+        return this.sectorStart; // sector R : n° du secteur sous sa forme 0xC1 to 0xC9
+      default:
+        return 0x02; // sector N : taille
+      }
+      //break;
+
+    case INSTR_IDSECTSUIV : // A : read id
       switch (this.resultPointer) {
       case 1 :
         return this.secondaryStatusRegs[0];
@@ -504,21 +635,25 @@ class Floppy {
       case 3 :
         return this.secondaryStatusRegs[2];
       case 4 :
-        return this.discTrack; // sector C (current track nb)
+        return this.sectorC; // sector C (current track nb)
       case 5 :
-        return this.head; // sector H
+        return this.sectorH; // sector H : 0x00
       case 6 :
-        return 0; // this.sector; // sector R
+        return this.sectorR; // sector R : n° du secteur sous sa forme 0xC1 to 0xC9
       default:
-        return 0; // this.nbbytes; // sector N
+        this.fdcStatusReg = 0x80;
+        return this.sectorN; // sector N : taille
       }
       //break;
 
-    case INSTR_INTSTATE : // 8; sense the interrupt state
+    case INSTR_INTSTATUS : // 8; sense the interrupt state
       // ST0, PCN (current track n°)
       if (this.resultPointer == 1) {
-        return this.secondaryStatusRegs[0];
+        int ssr0 = this.secondaryStatusRegs[0];
+        this.secondaryStatusRegs[0] = 0x00;
+        return ssr0;
       } else {
+        this.fdcStatusReg = 0x80;
         return this.discTrack;
       }
       //break;
@@ -537,17 +672,6 @@ class Floppy {
     }
   }
 
-
-  // ---------------------------------------------------------------------------------
-  int readStateMachine () {
-    if (this.execute) {
-      return this.sendDataToZ80();
-    } else if (this.result) {
-      return this.sendResultToZ80();
-      //fin d'instruction, pret à recevoir une autre
-    }
-    return 0;
-  }
 
   // ---------------------------------------------------------------------------------
   void readFloppy (String fname) {

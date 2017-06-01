@@ -1,4 +1,4 @@
-// Diskette //<>//
+// Diskette
 
 // 1 record = 128 bytes
 // 1 sector = 512 bytes
@@ -170,7 +170,8 @@ class D7 {
     }
   }
 
-  int[][][] readFile (String dname) {
+ //-----------------------------------------------------------------------
+ int[][][] readFile (String dname) {
     this.d7Name = "data/D7/" + dname;
     return this.readFile();
   }
@@ -202,6 +203,7 @@ class D7 {
     return discData;
   }
 
+  //-----------------------------------------------------------------------
   /* read the tracks and sectors info */
   int[][][] readStateMachine () {
     int[][][] discData = new int[TRACKMAX][SECTORMAX][SIZEMAX];
@@ -287,7 +289,6 @@ class D7 {
           tmpHalfblock = this.getHalfBlockfromTrackSector(tmpTrack, tmpSectorId);
           log("Sector Data saved in Block "+tmpBlock+","+tmpHalfblock+" - Track:"+tmpTrack+", Sector:0x"+hex(tmpSectorId, 2));
           this.dataBlocks.add(new DataBlock(tmpBlock, tmpHalfblock, fieldData));
-println(tmpTrack,currSector, tmpSectorId, tmpBlock, tmpHalfblock, fieldData.size());
           for (int bp = 0; bp < fieldData.size(); bp++) {
             discData[tmpTrack][currSector][bp] = fieldData.get(bp);
           }
