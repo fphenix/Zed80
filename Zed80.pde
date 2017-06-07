@@ -33,7 +33,8 @@ void setup () {
     cpc.step();
   } else {
     cpc = new CPC();
-    log.logModeON(0xBC9B);
+//    log.logModeON(0xBC9B);
+    log.logModeON(0xC55D);
     dbglog.logModeON();
     //log.logModeON(0xBEA7);
     cpc.setPC(0x0);
