@@ -10,6 +10,7 @@ Right now it's capable to :
 * manage the ROM/RAM paging(s);
 * boot the firmware
 * process the 'cat' command (Floppy catalog = list of files on the floppy disk)
+* use the AmsDOS ROM functions (upperRom n°7);
 * process the 'run"headover' command to launch the game
 * run the loader screen of the game "Head Over Heels" (by Ocean), red from a floppy disk image (.dsk file); see Notes below.
 * it then loads the game menu, and you can select "play the game", at this point there are a few screen glitches I need to look at!
@@ -28,6 +29,11 @@ Keyboard (azerty) implemented but not fully tested.
 
 Sound not yet supported (could be the next step).
 
+Basic (upperRom n°0) not tested yet (apart from cat and run) although the corresponding ROM is connected.
+
 For educational purposes only.
 
 Note: I am nowhere near a Software/Java.Processing expert. I'd be glad to get any inputs.
+
+
+Long live the migthy Amstrad CPCs!
