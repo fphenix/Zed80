@@ -18,7 +18,7 @@ class Pinout {
   int WR_b; // Write
   boolean POWER5V = true;
   boolean GROUND = false;
-  
+
   final int portBdefaultValue = 0x5E; // 50Hz, "Amstrad", Printer not ready
 
   boolean selGA = false;

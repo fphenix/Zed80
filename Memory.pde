@@ -93,13 +93,19 @@ class Memory {
       return (this.lorom.data[this.addr & 0x3FFF] & 0xFF);
       // in any other case read the RAM
     } else {
-      int bnk = this.addrIsInBank(this.addr);
-      int pointedBnk = this.selRAMBank[bnk];
-      int pg = this.selRAMPage[bnk];
-      int adr = this.recalcAddr(this.addr, pointedBnk);
-      this.whichMemName = "RDR" + pg + "" + pointedBnk;
-      return (this.ram[pg].data[adr] & 0xFF);
+      return this.rampeek(a);
     }
+  }
+
+  // peek in ram
+  int rampeek (int a) {
+    a &= 0xFFFF;
+    int bnk = this.addrIsInBank(a);
+    int pointedBnk = this.selRAMBank[bnk];
+    int pg = this.selRAMPage[bnk];
+    int adr = this.recalcAddr(a, pointedBnk);
+    this.whichMemName = "RDR" + pg + "" + pointedBnk;
+    return (this.ram[pg].data[adr] & 0xFF);
   }
 
   // The Gate Array (and DMA, ...) can only read fron the base 64K RAM whatever MMR config may be set
@@ -155,7 +161,7 @@ class Memory {
       if (a % 16 == 0) {
         this.memdmp.print(hex(a, 4) + " : ");
       }
-      val8 = this.peek(a);
+      val8 = this.rampeek(a);
       if ((val8 >= 32) && (val8 < 127)) {
         asciistr += char(val8);
       } else {

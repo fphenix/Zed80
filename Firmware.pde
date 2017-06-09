@@ -15,33 +15,33 @@ class Firmware {
 
   // vectors redefined to be handled mannually:
   boolean isVector(int v) {
-//    switch (v) {
-//    case 0xBC77 :
-//    case 0xBC7A :
-//    case 0xBC83 :
-//      this.mem.poke(v, 0xC9);
-//      return true;
-//    default :
-      return false;
-//    }
+    //    switch (v) {
+    //    case 0xBC77 :
+    //    case 0xBC7A :
+    //    case 0xBC83 :
+    //      this.mem.poke(v, 0xC9);
+    //      return true;
+    //    default :
+    return false;
+    //    }
   }
 
   void vectorTable (int addr) {
-/*    switch (addr) {
-    case 0xBC77 : 
-      this.vt.vecBC77(); 
-      break;
-    case 0xBC7A : 
-      this.vt.vecBC7A(); 
-      break;
-    case 0xBC83 : 
-      this.vt.vecBC83(); 
-      break;
-    default : 
-      this.vt.vecNotImp(addr);
-    }
-    log.logln("Firmware Call to Vector " + this.vt.hex4(addr) + " : " + this.vt.vectTitle);
-    */
+    /*    switch (addr) {
+     case 0xBC77 : 
+     this.vt.vecBC77(); 
+     break;
+     case 0xBC7A : 
+     this.vt.vecBC7A(); 
+     break;
+     case 0xBC83 : 
+     this.vt.vecBC83(); 
+     break;
+     default : 
+     this.vt.vecNotImp(addr);
+     }
+     log.logln("Firmware Call to Vector " + this.vt.hex4(addr) + " : " + this.vt.vectTitle);
+     */
   }
 
   // Vectors table

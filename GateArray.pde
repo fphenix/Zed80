@@ -156,10 +156,10 @@ class GateArray {
     this.screen.resize(this.nbcolfullscreen, this.nbrowfullscreen);
     this.screen.loadPixels();
   }
-  
+
   void setDbgRefresh(int df) {
     this.debugRefresh = df;
-}
+  }
 
   // ---------------------------------------------------------------------------------------
   void calcScreenSize () {
@@ -749,14 +749,14 @@ class GateArray {
   }
 
   // write the pixel color value of pixel @ (x, y) depending on the mode
-/*  void setPixValue (int x, int ylinenb, int pixval) {
-    int bytenb = this.calcByteNb(x);
-    int pixnb = this.calcPixInByte(x);
-    int byteaddr = this.calcByteAddr(ylinenb, bytenb);
-    int byteval = this.mem.basepeek(byteaddr);
-    this.mem.poke(byteaddr, this.setPixValInByte(byteval, pixnb, this.clampPixVal(pixval)));
-  }
-*/
+  /*  void setPixValue (int x, int ylinenb, int pixval) {
+   int bytenb = this.calcByteNb(x);
+   int pixnb = this.calcPixInByte(x);
+   int byteaddr = this.calcByteAddr(ylinenb, bytenb);
+   int byteval = this.mem.basepeek(byteaddr);
+   this.mem.poke(byteaddr, this.setPixValInByte(byteval, pixnb, this.clampPixVal(pixval)));
+   }
+   */
 
   // ====================================================================
   String hex2 (int val8) {

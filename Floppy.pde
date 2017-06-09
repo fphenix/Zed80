@@ -24,7 +24,7 @@ class Floppy {
   int[] secondaryStatusRegs = new int[7]; // ST0 to ST6 registers
 
   final int TRACKMAX = 40; // 0 à 39; catalogue (2KB, 64 entry max) : Piste0, secteurs 0xC1 à 0xC4 pour AmsDos. Catalogue en Piste 2 0x41 à 0x44 pour CP/M avec info system en Piste 0, secteur &41, &42, &48, &49 et Piste 1 secteur &41, &46, &42, &47, &43, &48, &44, &49, &45.
-  final int SECTORMAX = 9; // 9 (or 11?)
+  final int SECTORMAX = 9; // 9
   final int SIZEMAX = 512; // type 2 used for CPC
   final int formatByte = 0xE5;
   int[][][] discData = new int[TRACKMAX][SECTORMAX][SIZEMAX];
@@ -35,7 +35,7 @@ class Floppy {
   int[] trkHeader = new int[TRKHEADERLENGTH];
   int[] discTracks = new int[TRACKMAX-2];
 
-  int posInSector = 0;
+
   int sectorStart = 0xC1; // 0xC1 : AmsDos; 0x41 : CP/M
   int sectorEnd;
   int discNbTracks;
@@ -247,6 +247,7 @@ class Floppy {
 
   boolean inInstruction = false;
   boolean mtCommand = false;
+  boolean skCommand = false;
   boolean gotAllParams = false;
   boolean execute = false;
   boolean resultToSend = false;
@@ -311,11 +312,12 @@ class Floppy {
 
   // ---------------------------------------------------------------------------------
   void getCommand (int val) {
-    this.mtCommand = (val & 0x80) > 0;
+    this.mtCommand = (val & 0x80) > 0; // b7 : multitrack
+    this.skCommand = (val & 0x20) > 0; // b5 : skip deleted
     this.command = val & 0x1F;
     this.cmdName = this.getCommandName(this.command);
 
-    dbglog.logln("----------------------- Command = 0x" + hex(this.command, 2) + ": " + this.cmdName);
+    dbglog.logln("=========================================================== Command = 0x" + hex(this.command, 2) + ": " + this.cmdName);
     this.inInstruction = true;
     this.gotAllParams = false;
     this.execute = true;
@@ -505,16 +507,16 @@ class Floppy {
     val &= 0xFF;
     // nouvelle instruction détectée, décodons la (et obtenons le nb de param):
     if (!this.inInstruction) {
-      dbglog.logln("****************************************** WZ *********  track: " + this.discTrack + " ; Sector: 0x" + hex(this.sectorStart, 2) + " ; pos " + this.posInSector + " ; val = 0x" + hex(val, 2));
+      dbglog.logln("*** WZ *********  track: " + this.discTrack + " ; Sector: 0x" + hex(this.sectorStart, 2) + " ; pos " + this.dataPointer + " ; val = 0x" + hex(val, 2));
       this.getCommand(val);
 
       // sinon on est dans une instruction; on lit tous les parametres un à un
     } else {
       if (!this.gotAllParams) {
-        dbglog.logln("****************************************** WZ *********  track: " + this.discTrack + " ; Sector: 0x" + hex(this.sectorStart, 2) + " ; pos " + this.posInSector + " ; val = 0x" + hex(val, 2));
+        dbglog.logln("*** WZ *********  track: " + this.discTrack + " ; Sector: 0x" + hex(this.sectorStart, 2) + " ; pos " + this.dataPointer + " ; val = 0x" + hex(val, 2));
         this.getParam(val);
       } else { // if (this.execute) {
-        dbglog.logln("****************************************** WD *********  track: " + this.discTrack + " ; Sector: 0x" + hex(this.sectorStart, 2) + " ; pos " + this.posInSector + " ; val = 0x" + hex(val, 2));
+        dbglog.logln("*** WD *********  track: " + this.discTrack + " ; Sector: 0x" + hex(this.sectorStart, 2) + " ; pos " + this.dataPointer + " ; val = 0x" + hex(val, 2));
         this.getDataFromZ80(val); // Z80 Writing to FDC
       }
     }
@@ -527,10 +529,10 @@ class Floppy {
     int val;
     if (this.execute) {
       val = this.sendDataToZ80(); // Z80 reading from FDC
-      dbglog.logln("****************************************** RD *********  track: " + this.discTrack + " ; Sector: 0x" + hex(this.sectorStart, 2) + " ; pos " + this.posInSector + " ; val = 0x" + hex(val, 2));
+      dbglog.logln("*** RD *********  track: " + this.discTrack + " ; Sector: 0x" + hex(this.sectorStart, 2) + " ; pos " + this.dataPointer + " ; val = 0x" + hex(val, 2));
     } else { // if (this.resultToSend) {
       val = this.sendResultToZ80();
-      dbglog.logln("****************************************** RZ *********  track: " + this.discTrack + " ; Sector: 0x" + hex(this.sectorStart, 2) + " ; pos " + this.posInSector + " ; val = 0x" + hex(val, 2));
+      dbglog.logln("*** RZ *********  track: " + this.discTrack + " ; Sector: 0x" + hex(this.sectorStart, 2) + " ; pos " + this.dataPointer + " ; val = 0x" + hex(val, 2));
     }
     this.isInstrComplete();
     dbglog.logFlush();
@@ -570,6 +572,9 @@ class Floppy {
     this.clearBit_statReg(STATREG_FDCWAITINGFORZ80READ); // bit 6 reset : Z80 Writing
     this.setBit_statReg(STATREG_PHASEINSTRUCTION); // set bit 5 : Execution phase
     this.setBit_statReg(STATREG_INSTRUCTIONENCOURS); // bit 4 clear : can accept new commands
+
+    this.dataPointer++;
+
     switch (this.command) {
     case INSTR_ECRITURESEC : // 5; write sector
       // case INSTR_ECRITURESECEFF : // 9; write delected sector
@@ -601,7 +606,6 @@ class Floppy {
   int sendDataToZ80 () {
     int databyte;
     int sectorNum, secEndNum;
-    String dbgstr = "";
 
     this.setBit_statReg(STATREG_DATAPORTWAITING); // 0x70 : set bit 7
     this.setBit_statReg(STATREG_FDCWAITINGFORZ80READ); // bit 6 set : Z80 Reading
@@ -617,7 +621,6 @@ class Floppy {
       dbglog.logln("Reading track : " + this.discTrack + ", sector : 0x" + hex(this.sectorStart, 2) + " (#" + sectorNum + ") , data byte pos : " + this.dataPointer);
       databyte = this.discData[this.discTrack][sectorNum][this.dataPointer]; // sectorStart C1 to C9, but for the field we need 0 to 8
       dbglog.logln("Reading : 0x" + hex(databyte, 2) + " at dataPointer = " + this.dataPointer);
-      dbgstr = hex(databyte, 2) + " ";
       this.dataPointer++;
       // si dernier byte du secteur
       if (this.dataPointer == SIZEMAX) {
@@ -626,7 +629,6 @@ class Floppy {
           this.fdcInterruptError();
           this.discOn = 0;
           this.execute = false;
-          dbglog.logln(dbgstr);
           // sinon change de secteur et continue
         } else {
           this.dataPointer = 0;
@@ -639,7 +641,6 @@ class Floppy {
                 this.execute = false;
                 this.fdcInterrupt();
                 this.discOn = 0;
-                dbglog.logln(dbgstr);
               }
             }
             this.sectorStart = this.wrapIncrSect(this.sectorStart & 0xC0); // reinit sector to 0xC1 (AmsDos) or 0x41 (CP/M)
@@ -689,6 +690,7 @@ class Floppy {
     if (this.resultPointer == 0) {
       this.fdcInterrupt();
     }
+    this.dataPointer = 0;
     this.resultPointer++;
     dbglog.logln("Send result");
     switch (this.command) {
@@ -747,7 +749,8 @@ class Floppy {
         val = this.sectorH; // sector H : 0x00
         break;
       case 6 :
-        val = this.sectorR; // sector R : n° du secteur sous sa forme 0xC1 to 0xC9
+        this.sectorR = this.wrapIncrSect(this.sectorStart);
+        val = this.sectorR; // next sector R : n° du secteur sous sa forme 0xC1 to 0xC9
         break;
       default:
         this.fdcStatusReg = 0x80;

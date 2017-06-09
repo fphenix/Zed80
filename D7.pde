@@ -32,21 +32,15 @@ class D7 {
   ArrayList<DataBlock> dataBlocks = new ArrayList<DataBlock>();
 
   D7 (String fn) {
-    this.d7Name = fn;
-    this.infoList  = new InfoList[InfoConst.NBPARTS][InfoConst.MAXNBFIELDS];
-    this.logFileON = true;
-
-    this.DiskInfo();
-    this.TrackInfo();
-    this.SectorInfo();
-    this.FileInfo();
-    this.BinFileHeaderInfo();
-
-    this.LogFileName = "data/Logs/D7LogFile.txt";
-    this.logFile = createWriter(this.LogFileName);
+    this.d7Name = "data/D7/" + fn;
+    this.init();
   }
 
   D7 () {
+    this.init();
+  }
+
+  void init () {
     this.infoList  = new InfoList[InfoConst.NBPARTS][InfoConst.MAXNBFIELDS];
     this.logFileON = true;
 
@@ -69,8 +63,8 @@ class D7 {
     this.infoList[InfoConst.INPARTDISK][InfoConst.FORMATID] = new InfoList("File Format Id", 0x00, 34, "Must start with 'MV - CPC' (or EXTENDED CPC DSK File for Extended disk format)");
     this.infoList[InfoConst.INPARTDISK][InfoConst.CREATOR] = new InfoList("Creator Utility Name", 0x22, 14, "");
     this.infoList[InfoConst.INPARTDISK][InfoConst.NBTRACKS] = new InfoList("Number of Tracks", 0x30, 1, "40, 80, 42, etc. (sometimes approximative)");
-    this.infoList[InfoConst.INPARTDISK][InfoConst.NBSIDES] = new InfoList("Size of a Track", 0x31, 1, "1 or 2 sides");
-    this.infoList[InfoConst.INPARTDISK][InfoConst.TRACKSIZE] = new InfoList("Disk Information Block", 0x32, 2, "Little-Endian, i.e. low byte first followed by high; All tracks will have the size; includes the 0x100-long Track Info block; (field unused in extended format)");
+    this.infoList[InfoConst.INPARTDISK][InfoConst.NBSIDES] = new InfoList("Number of Sides", 0x31, 1, "1 or 2 sides");
+    this.infoList[InfoConst.INPARTDISK][InfoConst.TRACKSIZE] = new InfoList("Size of a Track", 0x32, 2, "Little-Endian, i.e. low byte first followed by high; All tracks will have the size; includes the 0x100-long Track Info block; (field unused in extended format)");
     this.infoList[InfoConst.INPARTDISK][InfoConst.UNUSED0] = new InfoList("not used", 0x34, 204, "0x00 (in Extended format: track size table = nbtracks*nbsides)");
   }
 
@@ -145,12 +139,12 @@ class D7 {
    #    T1 SC1 -> B4 H1
    #######################################################*/
   int getBlockfromTrackSector (int tT, int tS) {
-    int tmp = (9 * tT) + (tS & 0x0F) - 1;
+    int tmp = (9 * tT) + tS;
     int block = floor(1.0 * tmp / 2);
     return block;
   }
   int getHalfBlockfromTrackSector (int tT, int tS) {
-    int tmp = (9 * tT) + (tS & 0x0F) - 1;
+    int tmp = (9 * tT) + tS;
     int halfblock = tmp % 2;
     return halfblock;
   }
@@ -163,6 +157,10 @@ class D7 {
     return (tmp % 9) + 1;
   }
 
+  int calcSectorNumFromSectorID (int secID) {
+    return ((secID & 0x0F) - 1);
+  }
+
   void log (String str) {
     if (this.logFileON) {
       this.logFile.println(str);
@@ -170,8 +168,8 @@ class D7 {
     }
   }
 
- //-----------------------------------------------------------------------
- int[][][] readFile (String dname) {
+  //-----------------------------------------------------------------------
+  int[][][] readFile (String dname) {
     this.d7Name = "data/D7/" + dname;
     return this.readFile();
   }
@@ -283,14 +281,29 @@ class D7 {
           inPart = InfoConst.INPARTSECTOR;
           inField = InfoConst.TRACK;
         } else if (inField == InfoConst.SECTORDATA) {
+          // Track, Sector : Block, Half-Block ; currSector, tmpSectorId ; comment
+          // 0, &C1 : 0, 0 ; 0, 0 ; dir 0 (catalogue)
+          // 0, &C6 : 2, 1 ; 1, 5
+          // 0, &C2 : 0, 1 ; 2, 1 ; dir 1 (cat)
+          // 0, &C7 : 3, 0 ; 3, 6
+          // 0, &C3 : 1, 0 ; 4, 2 ; dir 2 (cat)
+          // 0, &C8 : 3, 1 ; 5, 7
+          // 0, &C4 : 1, 1 ; 6, 3 ; dir 3 (cat)
+          // 0, &C9 : 4, 0 ; 7, 8
+          // 0, &C5 : 2, 0 ; 8, 4
+          // 1, &C1 : 4, 1 ; 0, 0
+          // 1, &C6 : 7, 0 ; 1, 5
+          // ... etc.
           tmpTrack = this.trackNum;
-          tmpSectorId = sectorIDs.get(currSector);
+          tmpSectorId = this.calcSectorNumFromSectorID(sectorIDs.get(currSector));
           tmpBlock = this.getBlockfromTrackSector(tmpTrack, tmpSectorId);
           tmpHalfblock = this.getHalfBlockfromTrackSector(tmpTrack, tmpSectorId);
+
           log("Sector Data saved in Block "+tmpBlock+","+tmpHalfblock+" - Track:"+tmpTrack+", Sector:0x"+hex(tmpSectorId, 2));
           this.dataBlocks.add(new DataBlock(tmpBlock, tmpHalfblock, fieldData));
-          for (int bp = 0; bp < fieldData.size(); bp++) {
-            discData[tmpTrack][currSector][bp] = fieldData.get(bp);
+          for (int bytepointer = 0; bytepointer < fieldData.size(); bytepointer++) {
+            discData[tmpTrack][tmpSectorId][bytepointer] = fieldData.get(bytepointer);
+            // log("  __  T" + tmpTrack + " S" + tmpSectorId + " P" + bytepointer + " : 0x" +  hex(fieldData.get(bytepointer), 2));
           }
           // Note : the first 2 blocks (4 sectors) are the files directory information
           if (tmpBlock < 2) {
@@ -714,10 +727,6 @@ class D7 {
     saveJSONArray(json, "./data/JSON/D7files.json");
   }
 
-  void loadFile(String filename, Memory mem) {
-    this.loadFile(filename, mem, -1);
-  }
-
   int[] getreadFileInfo(String filename) {
     int[] fileInfo = new int[4];
     JSONArray json;
@@ -743,6 +752,11 @@ class D7 {
       println("File >" + filename + "< not found! while reading Header Info");
     }
     return fileInfo;
+  }
+
+  // LoadFile funtions ---------------------------------------------------------------
+  void loadFile(String filename, Memory mem) {
+    this.loadFile(filename, mem, -1);
   }
 
   void loadFile(String filename, Memory mem, int forceloadaddr) {

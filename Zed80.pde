@@ -33,7 +33,7 @@ void setup () {
     cpc.step();
   } else {
     cpc = new CPC();
-//    log.logModeON(0xBC9B);
+    //    log.logModeON(0xBC9B);
     log.logModeON(0xC55D);
     dbglog.logModeON();
     //log.logModeON(0xBEA7);
@@ -59,7 +59,7 @@ void setup () {
 void draw () {
   //cpc.step();
   cpc.go();
-  if ((millis() - starttime > 11000) && !loaded) {
+  if ((millis() - starttime > 20000) && !loaded) {
     //    println("Loading game!");
     loaded = true;
     //    this.cpc.runD7file("HEADOVER.BIN");

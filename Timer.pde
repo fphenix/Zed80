@@ -5,7 +5,7 @@ class Timer {
   float startTick = 0;
   float currentTick = 0;
   float timelength;
-int count;
+  int count;
 
   Timer (int p) { // ex: Timer(300) for a 1/300th of a second timer
     this.period = p;
