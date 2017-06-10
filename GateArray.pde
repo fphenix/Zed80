@@ -17,6 +17,8 @@
 
 class GateArray {
   int mode = 1;
+  int modeset = 1;
+
   int[] pen = new int[16];
   int[] penAlt = new int[16];
   int border, borderAlt;
@@ -124,15 +126,6 @@ class GateArray {
     this.init();
   }
 
-  void setRef(Z80 ref, Memory memref, Firmware fwvref) {
-    this.z80 = ref;
-    this.reg = this.z80.reg;
-    this.mem = memref;
-    this.fwv = fwvref;
-  }
-
-  /* == End of Constructors ======================================= */
-
   void initColor () {
     for (int i = 0; i < this.pen.length; i++) {
       this.pen[i] = i+1;
@@ -142,18 +135,28 @@ class GateArray {
     this.borderAlt = 1;
   }
 
+  void setRef(Z80 ref, Memory memref, Firmware fwvref) {
+    this.z80 = ref;
+    this.reg = this.z80.reg;
+    this.mem = memref;
+    this.fwv = fwvref;
+  }
+
+  /* == End of Constructors ======================================= */
+
   void init () {
     this.cpcHeight = height;
+    this.cpcWidth = 790;
+    this.dbg.xdebug = 0;
     if (this.dbg.showDebug) {
-      this.cpcWidth = 1100;
       this.dbg.xdebug = 300;
-    } else {
-      this.cpcWidth = 790;
-      this.dbg.xdebug = 0;
+      this.cpcWidth = 1100;
     }
     this.decodeReg();
+    this.calcScreenSize();
     surface.setSize(this.cpcWidth, this.cpcHeight);
     this.screen.resize(this.nbcolfullscreen, this.nbrowfullscreen);
+    //dbglog.logln("resize : " + this.nbcolfullscreen + " " + this.nbrowfullscreen);
     this.screen.loadPixels();
   }
 
@@ -163,34 +166,36 @@ class GateArray {
 
   // ---------------------------------------------------------------------------------------
   void calcScreenSize () {
-    this.xCharSize = 8;
     this.yscl = 1.0 * this.mainscl;
     this.lines = this.CRTCreg[this.regR06VerticDispChar]; // 25 in Char
     this.nbrow = this.lines * this.yCharSize; // 200 = 25 * 8
     this.nbrowfullscreen = 35 * this.yCharSize; // max visible size (incl borders) = 35 Char; 35*8=280 lines
 
     this.nbrowcrtc = (this.CRTCreg[regR04VerticTotChar] + 1) * this.yCharSize; // 312 = 39*8 = ((R4+1)*(R9+1))  R4 = 38; R9 = 7
-    this.nbcolcrtc = (this.CRTCreg[regR00HorizTotChar] + 1) * this.xCharSize; // ((R0+1)*8)  R0 = 63
+    this.nbcolcrtc = (this.CRTCreg[regR00HorizTotChar] + 1) * this.xCharSize; // ((R0+1)*8)  R0 = 63 ; 63*8 = 504
 
-    //Mode 1:
+    //Mode 1: (default)
     this.xscl = 1.0 * this.yscl;
     this.columns = this.CRTCreg[this.regR01HorizDispChar]; // R1 = 40 in Char
-    this.nbcol = this.columns * this.xCharSize; // 320 = R1 * 8
     this.nbcolfullscreen = 48 * this.xCharSize; // max visible size in char (incl borders) is 48; 48*8 = 384 pix; 
+    this.nbcolcrtc *= 1;
 
     //Mode 0 ou 3:
     if ((this.mode == 0) || (this.mode == 3)) {
       this.xscl *= 2.0;
-      this.columns /= 2; // 20 in Char
-      this.nbcol /= 2; // 160 = 20char * 8pixPerChar
-      this.nbcolfullscreen /= 2; // 192
+      this.columns = floor(this.columns / 2.0); // 20 in Char
+      this.nbcolfullscreen = floor(this.nbcolfullscreen / 2.0); // 192
+      this.nbcolcrtc *= 1;
+
       //Mode 2:
     } else if (this.mode == 2) {
       this.xscl /= 2.0;
       this.columns *= 2; // 80 in Char
-      this.nbcol *= 2; // 640 = 80 * 8
       this.nbcolfullscreen *= 2; // 768
+      this.nbcolcrtc *= 2;
     }
+    this.nbcol = this.columns * this.xCharSize; // eg. 320 = R1 * 8
+    // dbglog.logln("Mode : " + this.mode + ", col " + this.columns + " " + this.nbcol + " " + this.nbcolcrtc);
 
     this.xpad = floor((this.cpcWidth - (this.dbg.xdebug + (this.nbcolfullscreen * this.xscl))) / 3.0); 
     this.ypad = floor((this.cpcHeight - (this.nbrowfullscreen * this.yscl)) / 2.0);
@@ -226,7 +231,6 @@ class GateArray {
     this.cursorAddr = addrBase + addrOffset;
 
     //this.lightpenAddr = same than cursor; // not supported
-    this.calcScreenSize();
     this.videoAddr = this.dispAddr;
   }
 
@@ -237,9 +241,7 @@ class GateArray {
     this.instrDbg = si;
   }
 
-  int modeset;
   void setMode (int m) {
-    //println("Mode " + m);
     this.modeset = m & 0x03;
   }
 
@@ -257,28 +259,28 @@ class GateArray {
     return this.colorPalette(ink);
   }
 
-  void setPEN (int p, int col1, int col2) {
-    //println("Pen " + p + " ink " + col1, col2);
-    this.pen[p] = col1;
-    this.penAlt[p] = col2;
-  }
+  /* void setPEN (int p, int col1, int col2) {
+   //println("Pen " + p + " ink " + col1, col2);
+   this.pen[p] = col1;
+   this.penAlt[p] = col2;
+   } */
 
-  void setBORDER (int col1, int col2) {
-    //println("Border ink " + col1, col2);
-    this.border = col1;
-    this.borderAlt = col2;
-  }
+  /* void setBORDER (int col1, int col2) {
+   //println("Border ink " + col1, col2);
+   this.border = col1;
+   this.borderAlt = col2;
+   } */
 
   void setPENHard (int p, int colhard) {
     //println("Pen " + p + " ink " + col1, col2);
-    this.pen[p] = this.colorHardware2Color(colhard);
-    this.penAlt[p] = this.colorHardware2Color(colhard);
+    this.pen[p] = this.colorHardware2Firmware(colhard & 0x1F);
+    this.penAlt[p] = this.pen[p];
   }
 
   void setBORDERHard (int colhard) {
     //println("Border ink " + col1, col2);
-    this.border = this.colorHardware2Color(colhard);
-    this.borderAlt = this.colorHardware2Color(colhard);
+    this.border = this.colorHardware2Firmware(colhard & 0x1F);
+    this.borderAlt = this.border;
   }
 
   void setFlash (int t1, int t2) {
@@ -318,7 +320,10 @@ class GateArray {
 
   // =================================================================================
 
+  boolean refreshed = false;
+  boolean forcedrefreshed = false;
   boolean loaded = false;
+
   void display () {
     if ((this.VSYNC == 1) && (!this.loaded)) {
       this.refreshed = true;
@@ -331,15 +336,20 @@ class GateArray {
     this.frame++;
   }
 
-  boolean refreshed = false;
   void showScreen () {
-    if ((this.VSYNC == 1) && (!this.refreshed)) {
+    if ((this.VSYNC == 1) && (!this.refreshed || this.forcedrefreshed)) {
       this.refreshed = true;
+      this.forcedrefreshed = false;
       this.screen.updatePixels();
       pushMatrix();
       translate(this.xpad, this.ypad);
       scale(this.xscl, this.yscl);
       image(this.screen, 0, 0);
+      stroke(255, 0, 0);
+      noFill();
+      rect(0, 0, this.screen.width, this.screen.height);
+      //dbglog.logln(" IMG info : " + this.screen.width + " " + this.screen.height + " " + this.xscl + " " + this.yscl);
+      //dbglog.logFlush();
       popMatrix();
     } else {
       this.refreshed = false;
@@ -374,7 +384,9 @@ class GateArray {
   int yscan = 0;
 
   void calcScreen() {
+    boolean synched = true;
     float nmax = this.GAfetchesBytesPerNOP * this.getPixPerByte();
+
     for (int n = 0; n < floor(nmax); n++) {
       if (this.intDivRMR) {
         this.interruptLineCount = 0;
@@ -383,10 +395,10 @@ class GateArray {
       } else if (this.z80.interruptAck) {
         this.interruptLineCount &= 0x1F;
       }
-
+      // Vsynch, flyback --------------------------------------------------------
       if (this.yscan == this.nbrowfullscreen) {
-        this.HSYNC = 0; //--
         this.VSYNC = 1;
+        synched = false;
       } else if (this.yscan == (this.nbrowfullscreen + this.VSyncWidth)) {
         this.VSYNC = 0;
         if (this.interruptLineCount >= 32-2) {
@@ -395,49 +407,61 @@ class GateArray {
           this.z80.interruptPending = true;
           this.interruptLineCount = 0;
         }
-      } 
-      if (this.yscan == (this.nbrowcrtc + this.CRTCreg[regR05VerticAdjust])) {
-        this.yscan = 0;
-        this.xscan = 0;
       }
 
+      // Hsynch ------------------------------------------------------------------
       if (this.xscan == this.nbcolfullscreen) {
         if (this.VSYNC == 0) {
           this.HSYNC = 1;
+          synched = false;
         }
       } else if (this.xscan == (this.nbcolfullscreen + this.HSyncWidth)) {
         this.HSYNC = 0;
-        this.interruptLineCount++;
-        if (this.interruptLineCount == 52) {
-          this.z80.interruptPending = true;
-          this.interruptLineCount = 0;
-        }
-        if (this.mode != this.modeset) {
-          this.mode = this.modeset;
-          this.init();
-        }
-      } 
-      if (this.xscan == this.nbcolcrtc) {
-        this.yscan++;
-        this.xscan = -1;
-      } else if ((this.xscan < this.nbcolfullscreen) && (this.yscan < this.nbrowfullscreen)) {
+      }
+
+      // ---------------------------------------------------------------------------
+      if ((this.xscan < this.nbcolfullscreen) && (this.yscan < this.nbrowfullscreen)) {
         this.plotPixel();
         this.HSYNC = 0;
         this.VSYNC = 0;
       }
+
       this.xscan++;
+      if (this.xscan == this.nbcolcrtc) {
+        this.yscan++;
+        this.xscan = 0;
+      }
+      if (this.yscan == (this.nbrowcrtc + this.CRTCreg[regR05VerticAdjust])) {
+        this.yscan = 0;
+        this.xscan = 0;
+      } 
+
+      // ---------------------------------------------------------------------------
+      if (!synched) {
+        synched = true;
+        this.interruptLineCount++;
+        if (this.interruptLineCount == 52) {
+          this.z80.interruptPending = true;
+          this.interruptLineCount = 0;
+          /*dbglog.logln("yscan " + this.yscan + " nbrfs " + this.nbrowfullscreen + " vsw " + this.VSyncWidth + " intcnt " + this.interruptLineCount + 
+           " xscan " + this.xscan + " nbcfs " +  this.nbcolfullscreen + " hsw " +this.HSyncWidth + " vs " + this.VSYNC + " hs " + this.HSYNC + " synced " + synched +
+           " nbrc "+ this.nbrowcrtc + " nbcc " + this.nbcolcrtc);*/
+        }
+        if (this.mode != this.modeset) {
+          this.screen = createImage(1, 1, RGB);
+          this.mode = this.modeset;
+          this.init();
+          this.forcedrefreshed = true;
+        }
+      }
     }
   }
 
   // ----------------------------------------------------------------------------------------------------------
-  // Transform the Hardware (GateArray) color number to the
-  // Firmware (Basic/Software) color number and finally to the RGB color
-  int colorHardware2Color (int hw) {
-    return this.colorHardware2Firmware(hw);
-  }
 
   // ink is the Firmware (Basic) color number
   int colorPalette (int ink) {
+    ink &= 0x1F;
     switch (ink) {
     case 0 : 
       return #050505; // noir
@@ -499,13 +523,14 @@ class GateArray {
     case 26 : 
       return #FFFFFF; // white
     default : 
-      return #000000;
+      return #C06080; // debug crash color
     }
   }
 
   // Hardware (GateArray) color to Firmware (Basic) color
   int colorHardware2Firmware (int hwcolor) {
     // Pour obtenir la valeur a OUTer, hwcolor + 0x40;
+    hwcolor &= 0x1F;
     switch (hwcolor) {
     case 0x14 : // n° 20  - 01_0_10100
       return 0;
@@ -567,7 +592,148 @@ class GateArray {
     case 0x0B : // n° 11
       return 26;
     default : 
-      return 0;
+      return 27;
+    }
+  }
+
+  // ink is the Hardware color number
+  int colorHWPalette (int ink) {
+    ink &= 0x1F;
+    switch (ink) {
+    case 0x14 : // 0
+      return #050505; // noir
+    case 0x04 : // 1
+    case 0x10 : // 30 == 1
+      return #000080; // bleu foncé
+    case 0x15 : // 2
+      return #0000FF; // bleu
+    case 0x1C : // 3
+      return #800000; // marron
+    case 0x18 : // 4
+      return #800080; // violet
+    case 0x1D : // 5
+      return #8000FF; // purpule
+    case 0x0C : // 6
+      return #FF0000; // red
+    case 0x05 : // 7
+    case 0x08 : // 28 == 7
+      return #FF0080; // magenta
+    case 0x0D : // 8
+      return #FF00FF; // magenta 2
+    case 0x16 : // 9
+      return #008000; // dark green
+    case 0x06 : // 10
+      return #008080; // sea
+    case 0x17 : // 11
+      return #0080FF; // sky
+    case 0x1E : // 12
+      return #808000; // caca d'oie
+    case 0x00 : // 13
+    case 0x01 : // 27 == 13
+      return #808080; // gris
+    case 0x1F : // 14
+      return #8080FF; // violette
+    case 0x0E : // 15
+      return #FF8000; // orange
+    case 0x07 : // 16
+      return #FF8080; // sun burn
+    case 0x0F : // 17
+      return #FF80FF; // pink
+    case 0x12 : // 18
+      return #00FF00; // light green
+    case 0x02 : // 19
+    case 0x11 : // 31 == 19
+      return #00FF80; // green light
+    case 0x13 : // 20
+      return #00FFFF; // cyan
+    case 0x1A : // 21
+      return #80FF00; // green
+    case 0x19 : // 22
+      return #80FF80; // green light
+    case 0x1B : // 23
+      return #80FFFF; // cyan
+    case 0x0A : // 24 
+      return #FFFF00; // yellow
+    case 0x03 : // 25
+    case 0x09 : // 29 == 25
+      return #FFFF80; // poussin
+    case 0x0B : // 26
+      return #FFFFFF; // white
+    default : 
+      return #C06080; // debug crash color
+    }
+  }
+
+  // Firmware (Basic) color to Hardware (GateArray) color
+  int colorFirmware2Hardware (int swcolor) {
+    swcolor &= 0x1F;
+    switch (swcolor) {
+    case 0 : 
+      return 0x14;
+    case 1 : 
+      return 0x04;
+    case 2 : 
+      return 0x15;
+    case 3 : 
+      return 0x1C;
+    case 4 : 
+      return 0x18;
+    case 5 : 
+      return 0x1D;
+    case 6 : 
+      return 0x0C;
+    case 7 : 
+      return 0x05;
+    case 8 : 
+      return 0x0D;
+    case 9 : 
+      return 0x16;
+    case 10 : 
+      return 0x06;
+    case 11 : 
+      return 0x17;
+    case 12 : 
+      return 0x1E;
+    case 13 : 
+      return 0x00;
+    case 14 : 
+      return 0x1F;
+    case 15 : 
+      return 0x0E;
+    case 16 : 
+      return 0x07;
+    case 17 : 
+      return 0x0F;
+    case 18 : 
+      return 0x12;
+    case 19 : 
+      return 0x02;
+    case 20 : 
+      return 0x13;
+    case 21 : 
+      return 0x1A;
+    case 22 : 
+      return 0x19;
+    case 23 : 
+      return 0x1B;
+    case 24 : 
+      return 0x0A;
+    case 25 : 
+      return 0x03;
+    case 26 : 
+      return 0x0B;
+    case 27 : 
+      return 0x01;
+    case 28 : 
+      return 0x08;
+    case 29 : 
+      return 0x09;
+    case 30 : 
+      return 0x10;
+    case 31 : 
+      return 0x11;
+    default : 
+      return 0xFF;
     }
   }
 

@@ -116,7 +116,6 @@ class CPC {
   //-----------------------------------------------------------------
   void turnon () {
     this.z80.go();
-    log.logln("MEM   : PCADDR : OPCODES     : DISASM                ; SZ-H-PNC ; PC  |SP  |B C |D E |H L |A F |I R |IX  |IY    ; Comment");
   }
 
   void halt () {

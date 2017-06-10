@@ -12,8 +12,13 @@ class Firmware {
     this.vt.setRef(zref, garef, memref, d7ref);
     this.mem = memref;
   }
+  
+  /* ================================================================ */
+  /* ALL VECTORS ARE NOW DEFINED BY THE REAL FIRMWARE (lower ROM) !!! */
+  /* ================================================================ */
 
-  // vectors redefined to be handled mannually:
+
+  // vectors redefined to be handled mannually: NONE!
   boolean isVector(int v) {
     //    switch (v) {
     //    case 0xBC77 :
@@ -26,6 +31,7 @@ class Firmware {
     //    }
   }
 
+  // vectors redefined to be handled mannually: NONE!
   void vectorTable (int addr) {
     /*    switch (addr) {
      case 0xBC77 : 
@@ -63,13 +69,13 @@ class Firmware {
    BB6C   {efface contenu de la fenetre active et replace le curseur en Haut a gauche}
    BB6F   {Deplace horizontalement la position du curseur}
    BB72   {Deplace verticalement la position du curseur}
-   BB75   {deplace la position du curseur (horixontalement et verticalement)}
+   BB75   {deplace la position du curseur; LOCATE (horixontalement et verticalement)}
    BB78   {demande la position courante du curseur test}
    BB8A   {positionne le curseur a l'ecran}
    BB8D   {enleve le curseur a l'ecran}
-   BB90   {determine le stylo (couleur) utilise pour l'ecriture texte}
+   BB90   {determine le stylo (pen, couleur) utilise pour l'ecriture texte}
    BB93   {demande le numero du stylo utilise pour l'ecriture texte}
-   BB96   {determine le stylo utilise pour le fond des carateres texte}
+   BB96   {determine le stylo utilise pour le fond (paper) des carateres texte}
    BB99   {demande le numero du stylo utlise pour le fond}
    BB9C   {echange les encres stylo/fond}
    BB9F   {place le mode d'ecriture opaque ou transparent pour le fond des carateres affichables}
@@ -104,6 +110,7 @@ class Firmware {
    BC06   {???  Switch to 'secondary' screen memory space 0x4000/0xC000}
    BC08   {positionne l'adresse de l'ecran en memoire vive}
    BC0B   {lecture de l'adresse de l'ecran en RAM}
+   BC0E   {Mode video}
    BC11   {lecture du mode video courant}
    BC14   {effacement de l'ecran}
    BC17   {lecture de la surface de l'ecran en caratere (lignes/colonnes)}
@@ -115,7 +122,9 @@ class Firmware {
    BC29   {calcule l'adresse reelle de l'octet situe au-dessus de celui dont on passe l'adresse}
    BC2C   {remplit un octet avec la couleur demandee}
    BC2F   {renvoie un numero de couleur en fonction d'un octet rempli de pixels}
+   BC32   {Defnir la couleur d'un crayon (PEN)}
    BC35   {lecture des couleurs d'une encre}
+   BC38   {Definir la couleur du BORDER}
    BC3B   {lecture des couleurs du bord}
    BC3E   {positionne la duree de clignotement des couleurs de bord}
    BC41   {lecture des durees d'exposition des couleurs du bord}

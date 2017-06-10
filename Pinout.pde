@@ -102,13 +102,13 @@ class Pinout {
       }
       break;
     case 1: // INKR: b[7:6] = b'01
-      this.currink = (this.DATA & 0x1F); // INK Hardware value = b[4:0]
+      this.currink = this.DATA; // INK Hardware value
       if (this.currpen < 0x10) {
         this.ga.setPENHard(this.currpen, this.currink); // assign PEN xx with INK yy
-        this.selRegInfo = "GA reg : INKR to PENR";
+        this.selRegInfo = "GA reg : INKR 0x" + hex(this.currink, 2) + " to PENR " + this.currpen;
       } else {
         this.ga.setBORDERHard(this.currink); // if PENR bit 4 set, theb assign BORDER with INK yy
-        this.selRegInfo = "GA reg : INKR to BORDER";
+        this.selRegInfo = "GA reg : INKR 0x" + hex(this.currink, 2) + " to BORDER";
       }
       break;
     case 2: // RMR: b[7:6] = b'10

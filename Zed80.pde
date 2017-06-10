@@ -18,13 +18,13 @@ void setup () {
 
   if (test) {
     cpc = new CPC();
-    log.logModeON(0x4006);
+    log.logModeON(0x4000);
     dbglog.logModeON();
-    cpc.setPC(0x4000);
-    cpc.setSP(0x0000);
+    cpc.setPC(0x0000);
+    cpc.setSP(0x6000);
     cpc.setShowingDebugMem(0x0000);
     cpc.setBKPOff(); // off
-    cpc.mem.testASM("TESTD7.BIN");
+    cpc.mem.testASM("TESTCOLORS.BIN");
     cpc.attachFloppyDisc("HEADOVER.DSK");
     //cpc.setBKP(0x04F7); // on
     cpc.turnon();
@@ -33,10 +33,8 @@ void setup () {
     cpc.step();
   } else {
     cpc = new CPC();
-    //    log.logModeON(0xBC9B);
-    log.logModeON(0xC55D);
     dbglog.logModeON();
-    //log.logModeON(0xBEA7);
+    log.logModeON(0xBEA7);
     cpc.setPC(0x0);
     cpc.setSP(0x0);
     //cpc.setPC(0xBEA7); // PC reg
@@ -59,8 +57,10 @@ void setup () {
 void draw () {
   //cpc.step();
   cpc.go();
-  if ((millis() - starttime > 20000) && !loaded) {
+  if ((millis() - starttime > 10000) && !loaded) {
     //    println("Loading game!");
+//    cpc.mem.testASM("TESTCOLORS.BIN");
+//    cpc.setPC(0x4000);
     loaded = true;
     //    this.cpc.runD7file("HEADOVER.BIN");
     //    this.cpc.mem.ram[0].data[0x1BD6] = 0xCD;
