@@ -17,7 +17,6 @@ Right now it's capable to :
 
 Note: The picture is a beautiful 8-bit art by F. David Thorpe, which already makes this project worth it!
 Note2: I no longer force the game into memory and run it directly, but instead I boot the firmware and use the AmsDOS floppy functions to load the game (need to type 'run"headover' at the invite).
-However the loader screen colors are now messed up (mode 0)! This should be an easy fix. Games colors are fine though (mode 1).
 
 Warning the log file in 'on', and it quickly generates a multi-GB log file...
 
