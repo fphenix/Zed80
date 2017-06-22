@@ -127,6 +127,26 @@
 	"status": "",
     "id": 12
   },
+  {
+    "loadaddr": 16384,
+    "fname": "TESTCOLORS.BIN",
+    "filetype": 2,
+    "data": "F3 06 7F 0E 00 CB F9 CB B1 CB D9 CB D1 ED 49 0E 10 3E 18 CD 45 40 0E 00 3E 0C CD 45 40 0E 01 3E 18 CD 45 40 CD 18 BB AF CD 0E BC 06 11 48 CD 38 BC AF 06 09 48 CD 32 BC 3E 01 06 1A 48 CD 32 BC CD 18 BB FB C9 06 7F ED 49 F6 40 ED 79 C9",
+    "length": 0,
+    "startaddr": 16384,
+	"status": "",
+    "id": 13
+  },
+   {
+    "loadaddr": 16384,
+    "fname": "TESTSND.BIN",
+    "filetype": 2,
+    "data": "CD A7 BC 3E 01 21 43 40 CD BC BC 06 0B DD 21 50 40 C5 DD E5 DD 6E 00 DD 66 01 22 4A 40 DD 6E 02 DD 66 03 22 4E 40 21 47 40 CD AA BC 3E 01 CD AD BC FE 04 20 F7 DD E1 C1 DD 23 DD 23 DD 23 DD 23 10 CF C9 01 0F FF 04 01 01 00 00 00 00 0F 00 00 DE 01 3C 00 DE 01 3C 00 DE 01 3C 00 AA 01 3C 00 7B 01 78 00 AA 01 78 00 DE 01 3C 00 7B 01 3C 00 AA 01 3C 00 AA 01 3C 00 DE 01 F0 00",
+    "length": 0,
+    "startaddr": 16384,
+	"status": "",
+    "id": 14
+  },
  {
     "loadaddr": 16384,
     "fname": "NOP.BIN",
