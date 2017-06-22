@@ -1,4 +1,4 @@
-// Programable Sound Generator
+// Programable Sound Generator AY-3-8912
 // Canal A : gauche, canal B : milieu, canal C : droite
 //
 // PPI 0xF4 : Data (Son et Clavier)
@@ -41,12 +41,33 @@ class PSG {
   public final int psgReg_SHAPE_HARDENV = 13;
   public final int psgReg_EXTDATA_PORTA = 14; // receives data from Keyboard & Joystick
   public final int psgReg_EXTDATA_PORTB = 15; // not used on CPC
-
   private final int nbRegs = 16;
+
+  public final int freq4MHzDiv64  = 62500; //  4MHz/64
+  public final int freq4MHzDiv256 = 15625; //  4MHz/256
+
+  public final int CHANNEL_A = 0;
+  public final int CHANNEL_B = 1;
+  public final int CHANNEL_C = 2;
+  public final int NOISE_A = 3;
+  public final int NOISE_B = 4;
+  public final int NOISE_C = 5;
+  private final int nbChan = 3;
+
+  public final int VOLMAX = 1;
+
   int[] regPSG = new int[this.nbRegs]; // 16 reg for PPI access of the PSG
   String[] regComment = new String[this.nbRegs];
 
   SqrOsc squareOsc;
+
+  float[] channelVolume = new float[nbChan];
+  int[] channelToneFreq = new int[nbChan];
+  boolean[] envOnOff = new boolean[nbChan];
+  int envelopeToneFreq;
+  int volumeEnvelopeShape;
+  boolean[] mixer = new boolean[(nbChan+nbChan)]; // channels + noise channels
+  int noiseToneFreq;
 
   PSG () {
     this.init();
@@ -57,44 +78,132 @@ class PSG {
     this.z80 = z80ref;
   }
 
+  // ****************************************************************************************
   void init () {
+    this.regPSG[this.psgReg_PER_A_LSB] = 0x5A;
     this.regComment[this.psgReg_PER_A_LSB] = "PERIODE_A_LSB: Poids faible de la période sur 12 bits du son sur le canal A (gauche)";
+    this.regPSG[this.psgReg_PER_A_MSB] = 0x00;
     this.regComment[this.psgReg_PER_A_MSB] = "PERIODE_A_MSB: Poids fort de la période sur 12 bits du son sur le canal A (gauche)";
+    this.regPSG[this.psgReg_PER_B_LSB] = 0x5A;
     this.regComment[this.psgReg_PER_B_LSB] = "PERIODE_B_LSB: Poids faible de la période sur 12 bits du son sur le canal B (milieu)";
+    this.regPSG[this.psgReg_PER_B_MSB] = 0x00;
     this.regComment[this.psgReg_PER_B_MSB] = "PERIODE_B_MSB: Poids fort de la période sur 12 bits du son sur le canal B (milieu)";
+    this.regPSG[this.psgReg_PER_C_LSB] = 0x5A;
     this.regComment[this.psgReg_PER_C_LSB] = "PERIODE_C_LSB: Poids faible de la période sur 12 bits du son sur le canal C (droit)";
+    this.regPSG[this.psgReg_PER_C_MSB] = 0x00;
     this.regComment[this.psgReg_PER_C_MSB] = "PERIODE_C_MSB: Poids fort de la période sur 12 bits du son sur le canal C (droit)";
+
+    this.regPSG[this.psgReg_PER_NOISE] = 0x01;
     this.regComment[this.psgReg_PER_NOISE] = "BRUIT: Periode du générateur de bruit sur 5 bits";
-    this.regComment[this.psgReg_MIX_CTRL] = "CONTROLE: registre de Contrôle Mixeur, '0' pour activer, b0,1 et 2: Canal A, B et C, b3,4 et 5: Bruit sur A, B et C; b6: Reg14 (clavier) en entrée";
+
+    this.regPSG[this.psgReg_MIX_CTRL] = 0x3F;
+    this.regComment[this.psgReg_MIX_CTRL] = "CONTROLE: registre de Contrôle Mixeur, '0' pour activer, b0,1 et 2: Canal A, B et C, b3,4 et 5: Bruit sur A, B et C; b6=0: Reg14 (clavier) en entrée; b7 unused";
+
+    this.regPSG[this.psgReg_VOLUME_A] = 0x00;
     this.regComment[this.psgReg_VOLUME_A] = "VOLUME_A: Volume du canal A (bits [3:0]) et Selecteur ON/OFF d'enveloppe (bit 4); niveau logarithmique";
+    this.regPSG[this.psgReg_VOLUME_B] = 0x00;
     this.regComment[this.psgReg_VOLUME_B] = "VOLUME_B: Volume du canal B (bits [3:0]) et Selecteur ON/OFF d'enveloppe (bit 4); niveau logarithmique";
+    this.regPSG[this.psgReg_VOLUME_C] = 0x00;
     this.regComment[this.psgReg_VOLUME_C] = "VOLUME_C: Volume du canal C (bits [3:0]) et Selecteur ON/OFF d'enveloppe (bit 4); niveau logarithmique";
+
+    this.regPSG[this.psgReg_PER_HARDENV_LSB] = 0x0D;
     this.regComment[this.psgReg_PER_HARDENV_LSB] = "PERIODE_HARD_ENV_LSB: Poids faible de la période de la courbe d'enveloppe";
+    this.regPSG[this.psgReg_PER_HARDENV_MSB] = 0x00;
     this.regComment[this.psgReg_PER_HARDENV_MSB] = "PERIODE_HARD_ENV_MSB: Poids fort de la période de la courbe d'enveloppe";
+    this.regPSG[this.psgReg_SHAPE_HARDENV] = 0x18;
     this.regComment[this.psgReg_SHAPE_HARDENV] = "SHAPE_HARD_ENV: forme de la courbe du générateur de courbes d'enveloppe (bit0:Hold, bit1:Alternate, bit2:Attack, bit3:Continue)";
+
+    this.regPSG[this.psgReg_EXTDATA_PORTA] = 0x00;
+    this.regPSG[this.psgReg_EXTDATA_PORTB] = 0x00;
     this.regComment[this.psgReg_EXTDATA_PORTA] = "KEYBOARD_A: gestion du clavier via le port A du PSG; cf PPI";
     this.regComment[this.psgReg_EXTDATA_PORTB] = "KEYBOARD_B: Réservé pour Gestion du clavier via le port B du PSG; NON CABLE SUR CPC!!!";
   }
 
+  // ****************************************************************************************
+  void updateRegs () {
+    this.channelToneFreq[CHANNEL_A] = this.calcFreqHz(this.toneRegsToVal(this.psgReg_PER_A_LSB, this.psgReg_PER_A_MSB));
+    this.channelToneFreq[CHANNEL_B] = this.calcFreqHz(this.toneRegsToVal(this.psgReg_PER_B_LSB, this.psgReg_PER_B_MSB));
+    this.channelToneFreq[CHANNEL_C] = this.calcFreqHz(this.toneRegsToVal(this.psgReg_PER_C_LSB, this.psgReg_PER_C_MSB));
+
+    this.noiseToneFreq = this.calcFreqHz(this.regPSG[this.psgReg_PER_NOISE] & 0x1F);
+
+    this.mixer[CHANNEL_A] = this.mixOnOff(CHANNEL_A);
+    this.mixer[CHANNEL_B] = this.mixOnOff(CHANNEL_B);
+    this.mixer[CHANNEL_C] = this.mixOnOff(CHANNEL_C);
+    this.mixer[NOISE_A] = this.mixOnOff(NOISE_A);
+    this.mixer[NOISE_B] = this.mixOnOff(NOISE_B);
+    this.mixer[NOISE_C] = this.mixOnOff(NOISE_C);
+
+    //if bit 4 = 1 then ENVelope else fixed level amplitude
+    if (this.regPSG[this.psgReg_VOLUME_A] < 0x10) {
+      this.channelVolume[CHANNEL_A] = this.calcVol(this.regPSG[this.psgReg_VOLUME_A]);
+      this.envOnOff[CHANNEL_A] = false;
+    } else {
+      this.envOnOff[CHANNEL_A] = true;
+    }
+    if (this.regPSG[this.psgReg_VOLUME_B] < 0x10) {
+      this.channelVolume[CHANNEL_B] = this.calcVol(this.regPSG[this.psgReg_VOLUME_B]);
+      this.envOnOff[CHANNEL_B] = false;
+    } else {
+      this.envOnOff[CHANNEL_B] = true;
+    }
+    if (this.regPSG[this.psgReg_VOLUME_C] < 0x10) {
+      this.channelVolume[CHANNEL_C] = this.calcVol(this.regPSG[this.psgReg_VOLUME_C]);
+      this.envOnOff[CHANNEL_C] = false;
+    } else {
+      this.envOnOff[CHANNEL_C] = true;
+    }
+
+    this.envelopeToneFreq = this.calcEnvFreqHz(this.regPSG[this.psgReg_PER_HARDENV_LSB] + (this.regPSG[this.psgReg_PER_HARDENV_MSB] << 8));
+    // bits [3 to 0] = CONTinue, ATTack, ALTernate, HOLD
+    this.volumeEnvelopeShape = this.regPSG[this.psgReg_SHAPE_HARDENV];
+  }
+
+  // ****************************************************************************************
   void writePSGreg(int regnb, int val8) {
     this.regPSG[regnb & 0x0F] = val8 & 0xFF;
+    psglog.logln("Write PSG reg #" + (regnb & 0x0F) + " : val = 0x" + hex(val8, 2) + " ; " + this.regComment[regnb & 0x0F]);
     log.logln(this.regComment[regnb & 0x0F] + "; WRITE value=0x" + hex(val8, 2));
+    this.updateRegs();
   }
 
   int readPSGreg(int regnb) {
     int val8 = this.regPSG[regnb & 0x0F] & 0xFF;
+    if (regnb < psgReg_EXTDATA_PORTA) {
+      psglog.logln("Read  PSG reg #" + (regnb & 0x0F) + " : val = 0x" + hex(val8, 2) + " ; " + this.regComment[regnb & 0x0F]);
+    }
     log.logln(this.regComment[regnb & 0x0F] + "; READ value=0x" + hex(val8, 2));
     return val8;
   }
 
+  // ****************************************************************************************
+  // enables are active LOW, hence if a bit is 0, then the corresponding channel or noise is on, else it is off
+  boolean mixOnOff (int bitnb) {
+    return (((this.regPSG[this.psgReg_MIX_CTRL] >> bitnb) & 0x01) == 0) ? true : false;
+  }
+
+  int toneRegsToVal (int lsb, int msb) {
+    return (this.regPSG[lsb] + ( (this.regPSG[msb] & 0x0F) << 8) );
+  }
+
+  float calcVol (int val) {
+    return (1.0 * VOLMAX / pow(sqrt(2), (15-val)));
+  }
+
+  // periode in [1...4095] for regular tones (0 acts as 1)
+  //         in [1..31] for noise
   int calcFreqHz (int periode) {
-    return floor(62500.0 / periode);
+    return floor(1.0 * freq4MHzDiv64 / periode);
+  }
+
+  int calcEnvFreqHz (int periode) {
+    return floor(1.0 * freq4MHzDiv256 / periode);
   }
 
   // ex: pour 440 Hz (note LA), il faut placer dans les registres de période:
   // 62500/440 = 142 = 0x008E, d'où 0x8E dans reg0 et 0x00 dans reg1 par exemple.
   int calcPeriode (int freq) {
-    return floor(62500.0 / freq);
+    return floor(1.0 * freq4MHzDiv64 / freq);
   }
 
   int calcHardEnvPeriod (int val) {
@@ -116,6 +225,8 @@ class PSG {
     return floor(1.0 / this.calcNoteFreq(note, octave));
   }
 }
+
+// ***************************************************************************************************
 /* Exemple de protocle:
  OUT &F4xx,numéro de registre
  OUT &F6xx,&C0                 ' Lecture du registre par le PSG

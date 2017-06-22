@@ -3,6 +3,7 @@ import java.awt.event.KeyEvent;
 CPC cpc;
 Log log;
 Log dbglog;
+Log psglog;
 
 boolean test = false;
 
@@ -15,6 +16,8 @@ void setup () {
 
   log = new Log(); // Create a new file in the sketch directory
   dbglog = new Log("DebugFDC.txt"); // Create a new file in the sketch directory
+  psglog = new Log("PSG.log");
+  psglog.logModeON();
 
   if (test) {
     cpc = new CPC();
@@ -22,9 +25,9 @@ void setup () {
     dbglog.logModeON();
     cpc.setPC(0x0000);
     cpc.setSP(0x6000);
-    cpc.setShowingDebugMem(0x0000);
+    cpc.setShowingDebugMem(0x4000);
     cpc.setBKPOff(); // off
-    cpc.mem.testASM("TESTCOLORS.BIN");
+    cpc.mem.testASM("TESTSND.BIN");
     cpc.attachFloppyDisc("HEADOVER.DSK");
     //cpc.setBKP(0x04F7); // on
     cpc.turnon();
@@ -34,7 +37,7 @@ void setup () {
   } else {
     cpc = new CPC();
     dbglog.logModeON();
-    log.logModeON(0xBEA7);
+    //log.logModeON(0x0474);
     cpc.setPC(0x0);
     cpc.setSP(0x0);
     //cpc.setPC(0xBEA7); // PC reg
@@ -57,21 +60,15 @@ void setup () {
 void draw () {
   //cpc.step();
   cpc.go();
-  if ((millis() - starttime > 10000) && !loaded) {
-    //    println("Loading game!");
-//    cpc.mem.testASM("TESTCOLORS.BIN");
-//    cpc.setPC(0x4000);
+  if ((millis() - starttime > 7000) && !loaded) {
     loaded = true;
-    //    this.cpc.runD7file("HEADOVER.BIN");
-    //    this.cpc.mem.ram[0].data[0x1BD6] = 0xCD;
-    //    this.cpc.mem.ram[0].data[0x1BD7] = 0xA7;
-    //    this.cpc.mem.ram[0].data[0x1BD8] = 0xBE;
-    //    this.cpc.mem.ram[0].data[0xBC7A] = 0xC9;
-    this.cpc.mem.memDump();
+    cpc.mem.testASM("TESTSND.BIN");
+    cpc.mem.memDump();
     println("mem dumped!");
-    //    this.cpc.z80.reg.specialReg[this.cpc.z80.reg.PCpos] = 0xBEA7;
-    //    this.cpc.z80.reg.specialReg[this.cpc.z80.reg.SPpos] = 0xBFFA;
+    //cpc.setPC(0x4000);
+    //cpc.setSP(0x5000);
   }
+  psglog.logFlush();
 }
 
 void end () {
