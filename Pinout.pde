@@ -378,7 +378,7 @@ class Pinout {
       this.currPSGopWrite = 1;
       if (this.portADirRead == 0) {
         this.currPSGopVal = this.currPortAdata;
-        this.psg.writePSGreg(currPSGopReg, this.currPSGopVal);
+       // this.psg.writePSGreg(currPSGopReg, this.currPSGopVal);
         this.currPSGopReady = true;
       }
       break;

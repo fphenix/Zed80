@@ -94,7 +94,8 @@ class GateArray {
   RAM ram;       // reference
   Memory mem;    // reference
   Firmware fwv;  // reference
-
+  PSG psg;       // reference
+  
   DebugWindow dbg;
 
   String instrDbg = "";
@@ -111,7 +112,6 @@ class GateArray {
 
   void construct (boolean shwdbg) {
     this.dbg = new DebugWindow(shwdbg);
-    this.dbg.setRef(this);
 
     this.initColor();
     this.frame = 0;
@@ -135,11 +135,13 @@ class GateArray {
     this.borderAlt = 1;
   }
 
-  void setRef(Z80 ref, Memory memref, Firmware fwvref) {
+  void setRef(Z80 ref, Memory memref, Firmware fwvref, PSG psgref) {
     this.z80 = ref;
     this.reg = this.z80.reg;
     this.mem = memref;
     this.fwv = fwvref;
+    this.psg = psgref;
+    this.dbg.setRef(this, this.psg);
   }
 
   /* == End of Constructors ======================================= */

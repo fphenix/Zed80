@@ -8,6 +8,7 @@ class DebugWindow {
   int regypad = 16;
 
   GateArray ga; // ref
+  PSG psg; // ref
 
   DebugWindow (boolean shw) {
     this.showDebug = shw;
@@ -15,8 +16,9 @@ class DebugWindow {
     this.debugMem = 0x4000;
   }
 
-  void setRef(GateArray garef) {
+  void setRef(GateArray garef, PSG psgref) {
     this.ga = garef;
+    this.psg = psgref;
   }
 
   void setShowingMem (int m) {
@@ -93,6 +95,13 @@ class DebugWindow {
       crtcregval += hex(this.ga.CRTCreg[i], 2);
     }
     text(crtcregval, this.ga.xpad, this.debugLine*this.regypad);
+    this.debugLine++;
+    String psgregval = "PSG:";
+    for (int i = 0; i < 16; i++) {
+      psgregval += hex(this.psg.regPSG[i], 2);
+    }
+    text(psgregval, this.ga.xpad, this.debugLine*this.regypad);
+
   }
 
   void showDebugOpcode() {

@@ -20,9 +20,9 @@ void setup () {
   psglog.logModeON();
 
   if (test) {
-    cpc = new CPC();
+    cpc = new CPC(this);
     log.logModeON(0x4000);
-    dbglog.logModeON();
+    //dbglog.logModeON();
     cpc.setPC(0x0000);
     cpc.setSP(0x6000);
     cpc.setShowingDebugMem(0x4000);
@@ -35,9 +35,10 @@ void setup () {
     cpc.setDebugRefresh(50);
     cpc.step();
   } else {
-    cpc = new CPC();
-    dbglog.logModeON();
-    //log.logModeON(0x0474);
+    cpc = new CPC(this);
+    //dbglog.logModeON();
+    //log.logModeON(0xBEA7);
+    log.logModeON(0x246D);
     cpc.setPC(0x0);
     cpc.setSP(0x0);
     //cpc.setPC(0xBEA7); // PC reg

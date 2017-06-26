@@ -5,23 +5,26 @@ class Log {
   int lines;
   int logfromaddr;
   int pc;
+  int id;
 
   // ********************************************************************
   Log () {
+    this.id = 0;
     this.construct("LogFile.txt");
   }
 
   Log (String lname) {
+    this.id = 0;
     this.construct(lname);
   }
 
   void construct(String lname) {
     this.logname = lname;
     this.log = createWriter("data/Logs/" + lname); // Create a new file in the sketch directory
-    this.logln("MEM   : PCADDR : OPCODES     : DISASM                ; SZ-H-PNC ; PC  |SP  |B C |D E |H L |A F |I R |IX  |IY    ; Comment");
     this.lines = 0;
     this.logfromaddr = -2;
     this.pc = -1;
+    this.logln("MEM   : PCADDR : OPCODES     : DISASM                ; SZ-H-PNC ; PC  |SP  |B C |D E |H L |A F |I R |IX  |IY    ; Comment");
   }
 
   // ********************************************************************
@@ -50,8 +53,8 @@ class Log {
 
   // ********************************************************************
   void logIt (String str, boolean ln) {
-    if (this.mode) {
-      this.mode = true;
+    if (this.mode) { //if (this.mode == true)
+      this.isNextOneReq();
       if (ln) {
         this.log.println(str);
       } else {
@@ -70,6 +73,19 @@ class Log {
 
   void lognnl (String str) {
     this.logIt(str, false);
+  }
+
+  void isNextOneReq () {
+    if (this.lines >= 1000000) {
+      this.logFlush();
+      this.logClose();
+      String fn = this.logname;
+      String[] nameext = split(fn, '.');
+      String[] namenb = split(nameext[0], '_');
+      this.id++;
+      this.logname = namenb[0] + "_" + str(this.id) + "." + nameext[1];
+      this.construct(this.logname);
+    }
   }
 
   // ********************************************************************

@@ -19,6 +19,7 @@ public class Instruction extends InstrLD8 {
     this.asmInstr = "NOTIMP";
     this.setPMTRpCycles(nbopcodebytes, 1, 4, 1, 0);
     this.comment = "Not-Implemented (yet!)";
+    println(this.comment, hex(nbopcodebytes, 2));
   }
 
   // -----------------------------------------------------------------------------------------------------
@@ -26,6 +27,7 @@ public class Instruction extends InstrLD8 {
     this.asmInstr = "DNOP";
     this.setPMTRpCycles(nbopcodebytes, 1, 4, 1, 0);
     this.comment = "Place Holder 0xDD/0xFD (NOP)";
+    println(this.comment, hex(nbopcodebytes, 2));
   }
 
   /*-- class extended thru the Instr*** classes --*/

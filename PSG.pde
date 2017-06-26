@@ -52,26 +52,57 @@ class PSG {
   public final int NOISE_A = 3;
   public final int NOISE_B = 4;
   public final int NOISE_C = 5;
-  private final int nbChan = 3;
+  private final int NBCHANNELS = 3;
 
-  public final int VOLMAX = 1;
+  public final float VOLMAX = 1.0;
+  final float MODULATION = 0.0; // utilisé pour la modulation; ici 0
+  final float[] PANPOSITION = {-1.0, 0.0, 1.0}; // -1: left (A),   0: center (B),   +1: right (C)
 
   int[] regPSG = new int[this.nbRegs]; // 16 reg for PPI access of the PSG
   String[] regComment = new String[this.nbRegs];
 
-  SqrOsc squareOsc;
+  WhiteNoise[] noise;
+  SqrOsc[] sqOscChan;
+  Env env; // ASR Envelope
 
-  float[] channelVolume = new float[nbChan];
-  int[] channelToneFreq = new int[nbChan];
-  boolean[] envOnOff = new boolean[nbChan];
+  // Envelope variables
+  float attackTime;
+  float sustainTime;
+  float sustainLevel;
+  float releaseTime;
+
+  float duration; // in ms
+  float trigger;
+
+  float[] channelVolume = new float[NBCHANNELS];
+  int[] channelToneFreq = new int[NBCHANNELS];
+  boolean[] envOnOff = new boolean[NBCHANNELS];
   int envelopeToneFreq;
   int volumeEnvelopeShape;
-  boolean[] mixer = new boolean[(nbChan+nbChan)]; // channels + noise channels
+  boolean[] mixer = new boolean[(NBCHANNELS+NBCHANNELS)]; // channels + noise channels
   int noiseToneFreq;
 
-  PSG () {
+  // ****************************************************************************************
+  PSG (PApplet top) {
     this.init();
-    //this.squareOsc = new SqrOsc();
+    this.sqOscChan = new SqrOsc[NBCHANNELS];
+    this.noise = new WhiteNoise[NBCHANNELS];
+    for (int i = 0; i < NBCHANNELS; i++) {
+      this.sqOscChan[i] = new SqrOsc(top);
+      this.sqOscChan[i].add(MODULATION);
+      this.sqOscChan[i].pan(PANPOSITION[i]);
+      // this.sqOscChan[i].play(440, 0.0);
+      this.noise[i] = new WhiteNoise(top);
+      this.noise[i].add(MODULATION);
+      this.noise[i].pan(PANPOSITION[i]);
+    }
+    this.env = new Env(top);
+
+    // ASR envelopp : Attack-Sustain-Release
+    this.attackTime = 0.01; // durée pour atteindre le niveau max
+    this.sustainTime = 0.3; // longeur de la note stable
+    this.sustainLevel = 0.6; // niveau lors du sustain
+    this.releaseTime = 0.2; // durée pour que le volume chute à 0 après le sustain
   }
 
   void setRef (Z80 z80ref) {
@@ -160,11 +191,38 @@ class PSG {
   }
 
   // ****************************************************************************************
+  void playSounds () {
+    float freq;
+    float amp;
+    for (int i = 0; i < NBCHANNELS; i++) {
+      if (this.mixer[i]) {
+        freq = this.channelToneFreq[i];
+        if (this.envOnOff[i]) {
+          amp = this.volumeEnvelopeShape; 
+          //this.env.play(this.sqOscChan[i], this.attackTime, this.sustainTime, this.sustainLevel, this.releaseTime);
+        } else {
+          amp = this.channelVolume[i];
+        }
+        this.sqOscChan[i].play(freq, amp);
+        psglog.logln("Sound canal " + i + " " + freq + " " +amp);
+      }
+      // noise
+      if (this.mixer[i + NBCHANNELS]) {
+        freq = this.noiseToneFreq;
+        amp = this.channelVolume[i];
+        this.noise[i].play(freq, amp);
+        psglog.logln("Noise canal " + i + " " + freq + " " +amp);
+      }
+    }
+  }
+
+  // ****************************************************************************************
   void writePSGreg(int regnb, int val8) {
     this.regPSG[regnb & 0x0F] = val8 & 0xFF;
     psglog.logln("Write PSG reg #" + (regnb & 0x0F) + " : val = 0x" + hex(val8, 2) + " ; " + this.regComment[regnb & 0x0F]);
     log.logln(this.regComment[regnb & 0x0F] + "; WRITE value=0x" + hex(val8, 2));
     this.updateRegs();
+    this.playSounds();
   }
 
   int readPSGreg(int regnb) {
@@ -187,7 +245,7 @@ class PSG {
   }
 
   float calcVol (int val) {
-    return (1.0 * VOLMAX / pow(sqrt(2), (15-val)));
+    return map((VOLMAX / pow(sqrt(2), (15-val))), 0.0, VOLMAX, 0.0, 1.0);
   }
 
   // periode in [1...4095] for regular tones (0 acts as 1)

@@ -413,7 +413,7 @@ class Opcodes {
         this.instr.LDcontvald(d, opc[2], opc[3]);
 
         // -- LD A, I; LD A, R; LD I, A; LS R, A ---------------------------------------------------------------
-        // -- 1110_1101 0101_0111 : 0xED57, 0xED5F, 0xED47, 0xED4F
+        // -- 1110_1101 010b_b111 : 0xED57, 0xED5F, 0xED47, 0xED4F
       } else if ((opc[1] & 0xE7) == 0x47) {
         int air = (opc[1] & 0x18) >> 3;
         switch (air) {
@@ -464,7 +464,7 @@ class Opcodes {
         }
 
         // -- INI, INIR, IND, INDR, OUTI, OTIR, OUTD, OTDR ---------------------------------------------------------------
-        // -- 1110_1101 101r_d00c : 0xEDA2, A3, AA, AB, B2, B3, BA, BB
+        // -- 1110_1101 101r_d01c : 0xEDA2, A3, AA, AB, B2, B3, BA, BB
       } else if ((opc[1] & 0xE6) == 0xA2) {
         d = (opc[1] & 0x08) >> 3; // d=1 if "Decrement" else 0 for "Increment" instruction
         r = (opc[1] & 0x10) >> 4; // r=1 if "Repeat" Instruction, else 0
@@ -548,12 +548,14 @@ class Opcodes {
         // -- 1110_1101 01?1_1110 : 0xED5E, undoc : 7E : IM 2
       } else if ((opc[1] & 0xC7) == 0x46) {
         m = (opc[1] & 0x18) >> 3;
-        if ((m & 0x02) == 0x00) {
+        if ((m & 0x02) == 0x00) { // if bit4 of opc[1] = 0 : IM 0  (whatever bit3 of opc[1] is)
           mode = 0;
-        } else if ((m & 0x01) == 0x00) {
-          mode = 1;
-        } else {
-          mode = 2;
+        } else { // else bit4 of opc[1] = 1
+          if ((m & 0x01) == 0x00) { // if bit3 of opc[1] = 0 : IM 0
+            mode = 1;
+          } else { // else bit3 of opc[1] : IM 2
+            mode = 2;
+          }
         }
         this.instr.IMm(mode);
 
@@ -569,8 +571,7 @@ class Opcodes {
       ixy = (opc[0] & 0x20) >> 5; // IX (0) or IY (1)
 
       // -- EX (SP), IX and EX (SP), IY --------------------------------------------------------------
-      // -- 1101_1101 1110_0011 : 0xDDE3
-      // -- 1111_1101 1110_0011 : 0xFDE3
+      // -- 11i1_1101 1110_0011 : 0xDDE3, 0xFDE3
       if (opc[1] == 0xE3) {
         this.instr.EXcontSPIXY(ixy);
 
@@ -627,13 +628,13 @@ class Opcodes {
 
         // -- LD r, (IX+d)   and  IY -----------------------------------------------------------------------------------
         // -- 11i1_1101 01rr_r110 dddd_dddd : 0xDDxx and 0xFDxx with xx= 0x46, 4E, 56, 5E, 66, 6E, 7E  (NOT 0x76!!)
-      } else if (((opc[1] & 0xC7) == 0x46) && ((opc[1] & 0x38) != 0x30)) {
+      } else if (((opc[1] & 0xC7) == 0x46) && (opc[1] != 0x76)) {
         r = (opc[1] & 0x38) >> 3; // r = 0, 1, 2, 3, 4, 5, 7 (not 6)
         this.instr.LDrcontIXYtc(r, ixy, opc[2]);
 
         // -- LD (IX+d), r  and  IY -----------------------------------------------------------------------------------
         // -- 11i1_1101 0111_0rrr dddd_dddd : 0xDDxx and 0xFDxx with xx= 0x70, 71, 72, 73, 74, 75, 77  (NOT 0x76!!)
-      } else if (((opc[1] & 0xF8) == 0x70) && ((opc[1] & 0x07) != 0x06)) {
+      } else if (((opc[1] & 0xF8) == 0x70) && (opc[1] != 0x76)) {
         r = (opc[1] & 0x07) >> 0; // r = 0, 1, 2, 3, 4, 5, 7 (not 6)
         this.instr.LDcontIXYtcr(r, ixy, opc[2]);
 

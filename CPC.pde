@@ -17,11 +17,11 @@ class CPC {
   boolean stepForward;
   boolean freerun;
 
-  CPC () {
-    this.init();
+  CPC (PApplet top) {
+    this.init(top);
   }
 
-  void init () {
+  void init (PApplet top) {
     this.stepForward = false;
     this.freerun = false;
 
@@ -29,7 +29,7 @@ class CPC {
     this.mem = new Memory();
     this.z80 = new Z80();
     this.ga = new GateArray();
-    this.psg = new PSG();
+    this.psg = new PSG(top);
     this.kb = new Keyboard();
     this.pin = new Pinout();
     this.fdc = new Floppy();
@@ -37,7 +37,7 @@ class CPC {
     // set References
     this.z80.setRef(this.mem, this.fwv, this.pin);
     this.fwv.setRef(this.z80, this.ga, this.mem, this.diskette);
-    this.ga.setRef(this.z80, this.mem, this.fwv);
+    this.ga.setRef(this.z80, this.mem, this.fwv, this.psg);
     this.mem.setRef(this.fwv);
     this.psg.setRef(this.z80);
     this.pin.setRef(this.mem, this.ga, this.psg, this.fdc);
