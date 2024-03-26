@@ -16,11 +16,13 @@ Right now it's capable to :
 * it then loads the game menu, and you can select "play the game", at this point there are a few screen glitches I need to look at!
 
 Note: The picture is a beautiful 8-bit art by F. David Thorpe, which already makes this project worth it!
-Note2: I no longer force the game into memory and run it directly, but instead I boot the firmware and use the AmsDOS floppy functions to load the game (need to type 'run"headover' at the invite).
+Note2: I no longer force the game into memory and run it directly, but instead I boot the firmware and use the AmsDOS floppy functions to load the game.
+
+To launch the game, type '**run"headover**' at the Locomotive invite).
 
 Warning the log file in 'on', and it quickly generates a multi-GB log file...
 
-The frame rate needs to be adjust.
+The frame rate needs to be adjusted.
 
 All Z80 Opcodes/Instructions are implemented, but not all have been fully tested yet.
 
