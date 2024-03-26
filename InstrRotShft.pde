@@ -164,16 +164,16 @@ class InstrRotShft extends InstrGPACC {
     preval8 = this.getFromPointer(hl);
     preva = this.getRegVal(this.reg.Apos);
     if (lr == 1) {
-      // RLD
+      // RLD : ED 6F
       this.asmInstr = "RLD";
       val8 = ((preval8 & 0x0F) << 4) | (preva & 0x0F);
       a = (preva & 0xF0) | ((preval8 & 0xF0) >> 4);
       this.comment = "Rotate Left Nibbles A and (HL)";
       this.comment += "; A = " + hex2(a) + "; (HL) = " + hex2(val8);
     } else {
-      // RRD
+      // RRD : ED 67
       this.asmInstr = "RRD";
-      val8 = ((preva & 0x0F) << 4) | ((preva & 0xF0) >> 4);
+      val8 = ((preva & 0x0F) << 4) | ((preval8 & 0xF0) >> 4);  /* Fixed 26/03/2024 */
       a = (preva & 0xF0) | (preval8 & 0x0F);
       this.comment = "Rotate Right Nibbles A and (HL)";
       this.comment += "; A = " + hex2(a) + "; (HL) = " + hex2(val8);
