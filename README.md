@@ -2,7 +2,7 @@
 
 Amstrad CPC (6128) and Z80 Emulator in Processing!
 
-Work very much in progress.
+Work very much in progress, although "**run"headover**" will launch Head over Heels.
 
 Right now it's capable to :
 * execute every Z80 opcodes;
